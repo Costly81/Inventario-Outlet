@@ -26,7 +26,7 @@ Para quien mantiene el sistema. La guía para usuarios está en [guia-de-uso.md]
 - **Sin dependencias.** Node.js ≥ 22.13 (`node:sqlite`, `fetch`, `Intl` con zonas horarias). La página es HTML + CSS + módulos ES sin compilar.
 - **Un proceso servidor** atiende la página y la API en el puerto `4300`, escuchando en `0.0.0.0` para que entren los celulares de la red local.
 - **El lanzador** (`arranque/lanzador.js`) arranca el servidor con `fork` (canal IPC), lo reinicia si se cae (espera 2, 4, 8… hasta 60 s) y lo apaga en orden cuando aparece `datos/detener.orden` (lo escribe el menú) o con SIGTERM/Control + C. Deja su PID en `datos/lanzador.pid`.
-- **El menú** (`arranque/menu.js`) arranca el lanzador desacoplado (`detached`) con la salida en `datos/sistema.log` y `caffeinate -i -w <pid>` en macOS para que la Mac no se duerma. Sabe si el sistema está encendido consultando `GET /api/salud`.
+- **El menú** (`arranque/menu.js`) es el mismo en macOS (`iniciar.command`) y Windows (`iniciar.bat`). Arranca el lanzador desacoplado (`detached`) con la salida en `datos/sistema.log` y evita que el equipo se duerma: `caffeinate -i -w <pid>` en macOS; en Windows, un PowerShell oculto que llama `SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED)` y espera con `Wait-Process` a que termine el lanzador. Para apagar en Windows, si la orden por archivo no basta, usa `taskkill /t /f`. En Windows el menú usa recuadros dobles (`╔═╗`) y `√ ×` porque la consola clásica no dibuja `╭ ✓ ✗`. Sabe si el sistema está encendido consultando `GET /api/salud`.
 
 ### Archivos del servidor
 
@@ -211,7 +211,16 @@ Colores de dos series (costo / ganancia): `#e8955a` / `#0b8fc6`, validados para 
 
 `npm run probar` (node:test, 23 pruebas): fechas y zona horaria, reparto de costos de compras, FIFO, cobro en dólares, idempotencia, descuentos, devoluciones, merma, conteo, cancelaciones, lectura de la página de Google y proveedores del dólar con `fetch` simulado, dólar de un momento pasado, QR, y un recorrido HTTP completo (instalación, PIN, CSRF, permisos, compra, venta, tablero, CSV).
 
-GitHub Actions (`.github/workflows/pruebas.yml`) las corre en cada cambio en Node 22 y 24, además de revisar la sintaxis de todo el JavaScript y de los `.command`.
+GitHub Actions (`.github/workflows/pruebas.yml`) las corre en cada cambio en Linux con Node 22 y 24 (además revisa la sintaxis de todo el JavaScript, de los `.command`, y que los `.bat` conserven CRLF) y en **Windows y macOS reales**, donde además prueba el menú de arranque de punta a punta (`encender`, `estado`, `respaldo`, `celular`, `apagar`).
+
+### Archivos de arranque y finales de línea
+
+| Archivo | Sistema | Finales de línea |
+| --- | --- | --- |
+| `iniciar.command`, `encender.command` | macOS | LF (si no, la Terminal no los ejecuta) |
+| `iniciar.bat`, `encender.bat` | Windows | CRLF (si no, `cmd.exe` puede leer mal las etiquetas `goto`) |
+
+Lo fija `.gitattributes`. Los `.bat` hacen `chcp 65001` (UTF-8) antes de abrir el menú y sus mensajes propios van sin acentos, por compatibilidad con la consola clásica.
 
 ## Versiones
 

@@ -36,7 +36,7 @@ export async function montar(el) {
 
 function pintarHeroe() {
   const tc = estado.tc, caja = raiz.querySelector('[data-heroe]'); if (!caja) return;
-  if (!tc || !tc.valor) { caja.innerHTML = `<div class="nota mal">${ico('alerta')}<span>${esc((tc && tc.error) || 'Todavía no se ha podido consultar el dólar.')} ${esDueno() ? 'Revise la conexión a internet de la Mac o escriba un dólar manual en Ajustes.' : ''}</span></div>`; return; }
+  if (!tc || !tc.valor) { caja.innerHTML = `<div class="nota mal">${ico('alerta')}<span>${esc((tc && tc.error) || 'Todavía no se ha podido consultar el dólar.')} ${esDueno() ? 'Revise la conexión a internet de la computadora de la tienda o escriba un dólar manual en Ajustes.' : ''}</span></div>`; return; }
   const dir = tc.cambio > 0 ? 'sube' : tc.cambio < 0 ? 'baja' : '';
   const aj = estado.sesion.ajustes.tc;
   caja.innerHTML = `<section class="dolar-heroe"><div class="moneda-dec"></div>

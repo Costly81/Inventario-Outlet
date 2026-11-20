@@ -1,6 +1,6 @@
 # Guía de uso
 
-Para el **dueño** y para **quien vende**. Todo se usa desde el navegador: en la Mac de la tienda (`http://localhost:4300`) o en el celular (la dirección que muestra la opción 5 del menú, por ejemplo `http://192.168.1.50:4300`).
+Para el **dueño** y para **quien vende**. Todo se usa desde el navegador: en la computadora de la tienda, Mac o Windows (`http://localhost:4300`) o en el celular (la dirección que muestra la opción 5 del menú, por ejemplo `http://192.168.1.50:4300`).
 
 ## Antes de empezar: los tres precios del dólar
 

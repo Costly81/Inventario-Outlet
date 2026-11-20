@@ -25,11 +25,11 @@ function pintar() {
   raiz.innerHTML = `<div class="titulo-vista"><div><h1>Ajustes</h1><p>Su tienda, el dólar, las personas y los respaldos</p></div></div>
   <div class="rejilla r-2-md" style="align-items:start">
     <section class="tarjeta"><h3>${ico('celular', 'width="18" height="18" style="display:inline;vertical-align:-3px"')} Abrir en el celular</h3>
-      ${red.length ? `<p class="sec" style="font-size:var(--t-sm)">Con el celular conectado al <b>mismo Wi-Fi</b> que esta Mac, apunte la cámara al código o escriba la dirección.</p>
+      ${red.length ? `<p class="sec" style="font-size:var(--t-sm)">Con el celular conectado al <b>mismo Wi-Fi</b> que la computadora de la tienda, apunte la cámara al código o escriba la dirección.</p>
         <div class="qr" data-qr></div><p class="url-grande" style="margin:12px 0 4px">${esc(red[0].url)}</p>
         ${red.length > 1 ? `<p class="tenue" style="text-align:center;font-size:var(--t-xs)">Otras: ${red.slice(1).map(r => esc(r.url)).join(' · ')}</p>` : ''}
         <p class="sec" style="font-size:var(--t-sm)">En el iPhone: Compartir → <b>Agregar a pantalla de inicio</b>, y se abre como una app.</p>`
-      : '<p class="sec">No se encontró la dirección de red de la Mac. Revise que esté conectada al Wi-Fi.</p>'}
+      : '<p class="sec">No se encontró la dirección de red de la computadora. Revise que esté conectada al Wi-Fi.</p>'}
     </section>
     <form class="tarjeta formulario" data-tienda><h3>${ico('tienda', 'width="18" height="18" style="display:inline;vertical-align:-3px"')} Tienda</h3>
       <label class="campo"><span>Nombre</span><input name="nombre" value="${esc(aj.tienda.nombre)}" maxlength="40" required></label>
@@ -70,7 +70,7 @@ function pintar() {
 
   <div class="rejilla r-2-md" style="margin-top:16px;align-items:start">
     <section class="tarjeta"><div style="display:flex;justify-content:space-between;align-items:center"><h3>${ico('respaldo', 'width="18" height="18" style="display:inline;vertical-align:-3px"')} Respaldos</h3><button class="btn btn-primario btn-chico" data-respaldar>Respaldar ahora</button></div>
-      <p class="sec" style="font-size:var(--t-sm)">Se hace uno automático cada día en la carpeta <code>datos/respaldos</code> de la Mac. Descargue uno de vez en cuando y guárdelo en otro lugar (USB, nube).</p><div class="lista" data-respaldos>${esqueletos(2, 50)}</div></section>
+      <p class="sec" style="font-size:var(--t-sm)">Se hace uno automático cada día en la carpeta <code>datos/respaldos</code> de la computadora de la tienda. Descargue uno de vez en cuando y guárdelo en otro lugar (USB, nube).</p><div class="lista" data-respaldos>${esqueletos(2, 50)}</div></section>
     <section class="tarjeta"><h3>${ico('descargar', 'width="18" height="18" style="display:inline;vertical-align:-3px"')} Exportar a Excel</h3>
       <p class="sec" style="font-size:var(--t-sm)">Archivos .csv que abren en Excel o Numbers.</p>
       <div class="grupo-botones">${[['ventas', 'Ventas'], ['inventario', 'Inventario'], ['compras', 'Compras'], ['mermas', 'Merma'], ['gastos', 'Gastos'], ['dolar', 'Historial del dólar']].map(([k, t]) => `<a class="btn btn-borde btn-chico" href="/api/exportar/${k}.csv" download>${t}</a>`).join('')}</div>

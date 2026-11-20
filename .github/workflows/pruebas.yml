@@ -1,5 +1,7 @@
-# Corre las pruebas automáticas en cada cambio subido a GitHub (y en cada Pull Request),
-# en Node.js 22 y 24, para enterarse de inmediato si algo se rompió.
+# Corre las pruebas automáticas en cada cambio subido a GitHub (y en cada Pull Request):
+#   · en Linux con Node.js 22 y 24 (pruebas del servidor y revisión de sintaxis de todo el código);
+#   · en Windows y en macOS reales: las mismas pruebas y además el menú de arranque de verdad
+#     (iniciar.bat / iniciar.command): encender, estado, respaldo, código QR y apagar.
 name: Pruebas
 run-name: Pruebas · ${{ github.ref_name }}
 
@@ -29,5 +31,47 @@ jobs:
           for f in $(git ls-files 'servidor/*.js' 'servidor/**/*.js' 'arranque/*.js' 'publico/js/qr.js' 'pruebas/*.js'); do node --check "$f"; done
           for f in $(git ls-files 'publico/js/*.js' 'publico/js/**/*.js' | grep -v qr.js); do node --input-type=module --check < "$f"; done
           bash -n iniciar.command && bash -n encender.command
+          grep -q $'\r' iniciar.bat && grep -q $'\r' encender.bat   # los .bat deben conservar CRLF
       - name: Pruebas del servidor
         run: npm run probar
+
+  sistemas:
+    name: ${{ matrix.os == 'windows-latest' && 'Windows' || 'macOS' }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    env:
+      IO_SIN_RED: '1'
+      IO_PUERTO: '4310'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Pruebas del servidor
+        run: npm run probar
+      - name: Menú de arranque en Windows (iniciar.bat)
+        if: runner.os == 'Windows'
+        shell: cmd
+        run: |
+          set "IO_DATOS=%RUNNER_TEMP%\io-datos"
+          call iniciar.bat encender || exit /b 1
+          call iniciar.bat estado || exit /b 1
+          call iniciar.bat respaldo || exit /b 1
+          call iniciar.bat celular
+          call iniciar.bat apagar || exit /b 1
+          type "%IO_DATOS%\sistema.log"
+      - name: Menú de arranque en macOS (iniciar.command)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          export IO_DATOS="$RUNNER_TEMP/io-datos"
+          ./iniciar.command encender
+          ./iniciar.command estado
+          ./iniciar.command respaldo
+          ./iniciar.command celular
+          ./iniciar.command apagar
+          cat "$IO_DATOS/sistema.log"

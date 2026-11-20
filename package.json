@@ -1,6 +1,6 @@
 {
   "name": "inventario-outlet",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Control de inventario, compras en dólares, ventas en pesos, tipo de cambio en vivo y proyección para una tienda outlet de ropa en la frontera",
   "private": true,
   "license": "SEE LICENSE IN LICENSE",

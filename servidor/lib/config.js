@@ -46,7 +46,7 @@ function leer() {
 
   if (!Number.isInteger(cfg.puerto) || cfg.puerto < 1 || cfg.puerto > 65535) throw new Error('El puerto configurado no es válido: ' + cfg.puerto);
   if (PUERTOS_RESERVADOS.includes(cfg.puerto) && process.env.IO_PUERTO === undefined)
-    throw new Error(`El puerto ${cfg.puerto} está reservado para otro programa de esta Mac. Elija otro en datos/configuracion.json (por ejemplo 4300).`);
+    throw new Error(`El puerto ${cfg.puerto} está reservado para otro programa de esta computadora. Elija otro en datos/configuracion.json (por ejemplo 4300).`);
   return cfg;
 }
 

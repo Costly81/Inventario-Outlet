@@ -3,7 +3,7 @@
    INVENTARIO OUTLET · SERVIDOR
    Un solo programa que:
      · guarda todo en datos/inventario.sqlite,
-     · atiende la página (carpeta publico/) a la Mac y a los celulares de la red local,
+     · atiende la página (carpeta publico/) a la computadora (Mac o Windows) y a los celulares de la red local,
      · consulta el dólar cada pocos minutos y avisa en vivo a las pantallas abiertas,
      · hace un respaldo diario.
 
@@ -104,9 +104,9 @@ async function iniciar() {
   });
 
   console.log(`\n  ✓ Inventario Outlet ${app.version} encendido · ${T.zona()} · ${T.partes().fecha} ${T.partes().hora}`);
-  console.log(`    En esta Mac:      http://localhost:${cfg.puerto}`);
+  console.log(`    En esta computadora: http://localhost:${cfg.puerto}`);
   for (const u of Red.urls(cfg.puerto).slice(0, 3)) console.log(`    En los celulares: ${u.url}   (${u.interfaz})`);
-  if (codigo) console.log(`\n  PRIMER USO: código para crear el PIN del dueño: ${codigo}  (desde la Mac no se pide)`);
+  if (codigo) console.log(`\n  PRIMER USO: código para crear el PIN del dueño: ${codigo}  (desde esta computadora no se pide)`);
 
   /* Tareas: dólar, respaldo diario, limpieza */
   tc.iniciar().catch(() => { });

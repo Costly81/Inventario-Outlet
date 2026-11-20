@@ -14,26 +14,34 @@ No requiere instalar nada más que Node.js. Todos los datos del negocio quedan e
  b) Descomprima este .zip y deje la carpeta «inventario-outlet» en un lugar fijo,
     por ejemplo en su carpeta personal. No la mueva después de empezar a usarla.
 
- c) Primer arranque: haga clic derecho (o Control + clic) sobre «iniciar.command» y elija «Abrir».
+ c) MAC · Primer arranque: haga clic derecho (o Control + clic) sobre «iniciar.command» y elija «Abrir».
     macOS pide una confirmación la primera vez porque el archivo viene de internet; después basta
     con doble clic. Si aun así macOS lo bloquea, abra la Terminal en esta carpeta y escriba:
         xattr -dr com.apple.quarantine .
         chmod +x iniciar.command encender.command
 
+ d) WINDOWS · Doble clic en «iniciar.bat». Si Windows muestra «Windows protegió su PC», elija
+    «Más información» → «Ejecutar de todas formas» (pasa la primera vez porque viene de internet).
+    La primera vez que encienda, si el Firewall de Windows pregunta por «Node.js», marque
+    «Redes privadas» y elija «Permitir acceso»: sin eso los celulares no pueden entrar.
+
 
 ══ 2. ENCENDER, APAGAR Y ABRIR ════════════════════════════════════════════════
 
- · Doble clic en iniciar.command abre un MENÚ con números. Escriba el número y presione Enter:
+ · Doble clic en iniciar.command (Mac) o iniciar.bat (Windows) abre el mismo MENÚ con números. Escriba el número y presione Enter:
       1 encender · 2 apagar · 3 reiniciar · 4 abrir en esta Mac · 5 abrir en un celular (código QR)
       6 ver el registro · 7 respaldo · 8 restablecer el PIN del dueño · 9 versión · 0 salir
    Apagar, reiniciar y restablecer piden además escribir SI.
 
  · Cerrar la ventana del menú NO apaga el sistema. Se apaga solo con la opción 2.
- · Mientras está encendido, la Mac no se duerme sola. (Si la cierra o la apaga, los celulares
+ · Mientras está encendido, la computadora no se duerme sola (la pantalla sí puede apagarse). (Si la cierra o la apaga, los celulares
    ya no podrán entrar.)
 
- · Para que encienda solo al prender la Mac: Ajustes del Sistema → General → Ítems de inicio de
-   sesión → «+» → elija «encender.command» (NO iniciar.command).
+ · Para que encienda solo al prender la computadora:
+     Mac:     Ajustes del Sistema → General → Ítems de inicio de sesión → «+» → «encender.command»
+              (NO iniciar.command).
+     Windows: Windows + R → escriba  shell:startup  → Enter → en esa carpeta cree un acceso directo
+              a «encender.bat» (NO iniciar.bat).
 
 
 ══ 3. PRIMER USO ═══════════════════════════════════════════════════════════════
@@ -72,7 +80,9 @@ No requiere instalar nada más que Node.js. Todos los datos del negocio quedan e
 
  · El celular no abre la página: debe estar en el MISMO Wi-Fi que la Mac; revise la dirección con
    la opción 5. Si macOS preguntó si «node» puede aceptar conexiones entrantes, responda Permitir
-   (Ajustes del Sistema → Red → Firewall → Opciones).
+   (Mac: Ajustes del Sistema → Red → Firewall → Opciones. Windows: Firewall de Windows Defender →
+   Permitir una aplicación → Node.js en «Privada»).
+   En Windows, la red Wi-Fi debe estar marcada como «Privada» (Configuración → Red e Internet).
  · El dólar no se actualiza: revise el internet de la Mac. Mientras tanto, escriba un dólar manual
    en Ajustes → Dólar.
  · El dueño olvidó su PIN: opción 8 del menú.

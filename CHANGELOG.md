@@ -2,6 +2,15 @@
 
 Cada versión nueva cambia el archivo `VERSION`; al subirla a `main`, GitHub Actions corre las pruebas y publica la Release con su ZIP de instalación (ver `docs/documentacion-tecnica.md` → Versiones).
 
+## 1.1.0 · 19 de noviembre de 2026
+
+- **También en Windows.** Nuevos `iniciar.bat` (el mismo menú con los mismos números que `iniciar.command`) y `encender.bat` (encender sin menú, para la carpeta de Inicio de Windows). Revisan que Node.js esté instalado y en versión 22.13 o más reciente.
+- En Windows, la computadora no se duerme sola mientras el sistema está encendido (igual que la Mac con `caffeinate`). La pantalla sí puede apagarse.
+- El menú usa en Windows recuadros y marcas que la consola clásica sabe dibujar, y habla de «esta computadora» en lugar de «esta Mac». La página y el servidor también dejan de decir «Mac» donde puede ser cualquier computadora.
+- Los `.bat` se guardan con finales de línea de Windows (`.gitattributes`), para que `cmd.exe` los lea bien aunque el repositorio se descargue desde otra computadora.
+- GitHub Actions prueba ahora en **Windows y macOS reales**: las pruebas del servidor y el menú de arranque de punta a punta (encender, estado, respaldo, código QR y apagar).
+- Los datos (`datos/`) son los mismos en los dos sistemas: se puede pasar la carpeta completa de una Mac a una computadora con Windows o al revés.
+
 ## 1.0.0 · 19 de noviembre de 2026
 
 Primera versión del sistema de inventario y ventas para la tienda outlet.

@@ -1,12 +1,13 @@
 'use strict';
 /* ─────────────────────────────────────────────────────────────────────────────
-   INVENTARIO OUTLET · MENÚ DE ARRANQUE (lo que se ve al abrir iniciar.command)
+   INVENTARIO OUTLET · MENÚ DE ARRANQUE (lo que se ve al abrir iniciar.command en macOS
+   o iniciar.bat en Windows: es el mismo menú, con las mismas opciones y números)
 
    · Cada opción se escribe y se CONFIRMA CON ENTER (un dedo que se equivoca de tecla no hace nada).
      Apagar, reiniciar y restablecer el PIN piden además escribir SI.
    · El sistema corre aparte, en segundo plano (arranque/lanzador.js). Cerrar esta ventana NO lo apaga:
      solo se apaga con la opción 2. Lo que escribe al trabajar queda en datos/sistema.log (opción 6).
-   · En la Mac, mientras está encendido, la computadora no se duerme sola (caffeinate).
+   · Mientras está encendido, la computadora no se duerme sola (macOS: caffeinate; Windows: SetThreadExecutionState).
 
    Sin menú (Terminal o conexión remota):
      node arranque/menu.js encender | apagar | reiniciar | estado | respaldo | celular
@@ -17,6 +18,9 @@ const L = require('./lanzador.js');
 const RAIZ = L.RAIZ, DATOS = L.datosDir(), MAC = process.platform === 'darwin', WIN = process.platform === 'win32';
 const PID = path.join(DATOS, 'lanzador.pid'), ORDEN = path.join(DATOS, 'detener.orden'), LOG = path.join(DATOS, 'sistema.log');
 const NODO = [process.execPath, '--disable-warning=ExperimentalWarning'];
+/* Cómo se llama el equipo en los mensajes, y símbolos que la consola clásica de Windows sí sabe dibujar */
+const EQUIPO = MAC ? 'esta Mac' : 'esta computadora', EL_EQUIPO = MAC ? 'la Mac' : 'la computadora';
+const S = WIN ? { bien: '√', mal: '×', sol: '*', punto: '•', caja: ['╔', '╗', '═', '║', '╚', '╝'] } : { bien: '✓', mal: '✗', sol: '☀', punto: '•', caja: ['╭', '╮', '─', '│', '╰', '╯'] };
 const version = () => { try { return fs.readFileSync(path.join(RAIZ, 'VERSION'), 'utf8').trim(); } catch (_) { return '?'; } };
 
 /* ---------- apariencia (colores solo si la ventana los admite) ---------- */
@@ -26,13 +30,13 @@ const fuerte = s => c('1', s), tenue = s => c('2', s), cielo = s => c('38;5;39',
 const say = (s = '') => process.stdout.write(s + '\n');
 const limpiar = () => { if (TTY) process.stdout.write('\x1b[2J\x1b[3J\x1b[H'); };
 function encabezado() {
-  const ancho = 56, linea = t => `  ${cielo('│')}${t}${cielo('│')}`;
-  say(); say('  ' + cielo('╭' + '─'.repeat(ancho) + '╮'));
+  const [a, b, h, v, d, e] = S.caja, ancho = 56, linea = t => `  ${cielo(v)}${t}${cielo(v)}`;
+  say(); say('  ' + cielo(a + h.repeat(ancho) + b));
   say(linea(' '.repeat(ancho)));
-  say(linea(`       ${sol("☀")}   ${fuerte("I N V E N T A R I O   O U T L E T")}   ${sol("$")}        `));
+  say(linea(`       ${sol(S.sol)}   ${fuerte("I N V E N T A R I O   O U T L E T")}   ${sol("$")}        `));
   say(linea(`        ${tenue('Ventas, compras en dólares y control de ropa')}    `));
   say(linea(' '.repeat(ancho)));
-  say('  ' + cielo('╰' + '─'.repeat(ancho) + '╯'));
+  say('  ' + cielo(d + h.repeat(ancho) + e));
 }
 
 /* ---------- configuración y estado ---------- */
@@ -59,7 +63,7 @@ function abrir(url) {
   try {
     if (WIN) cp.spawn('cmd', ['/c', 'start', '""', url], { detached: true, stdio: 'ignore', windowsHide: true, windowsVerbatimArguments: true }).unref();
     else cp.spawn(MAC ? 'open' : 'xdg-open', [url], { detached: true, stdio: 'ignore' }).on('error', () => { }).unref();
-    say(`  ${verde('✓')}  Se abrió ${enlace(url)} en el navegador.`);
+    say(`  ${verde(S.bien)}  Se abrió ${enlace(url)} en el navegador.`);
   } catch (_) { say(`  Abra esta dirección en el navegador: ${enlace(url)}`); }
 }
 
@@ -74,59 +78,71 @@ async function encender() {
   const hijo = cp.spawn(NODO[0], [NODO[1], path.join(__dirname, 'lanzador.js')], { cwd: RAIZ, detached: true, windowsHide: true, stdio: ['ignore', fd, fd], env: { ...process.env, NO_COLOR: '1' } });
   fs.closeSync(fd);
   let salio = null; hijo.on('exit', cod => { salio = cod === null ? -1 : cod; }); hijo.unref();
-  /* macOS: que la Mac no se duerma por inactividad mientras el sistema esté encendido */
-  if (MAC) { try { cp.spawn('caffeinate', ['-i', '-w', String(hijo.pid)], { detached: true, stdio: 'ignore' }).on('error', () => { }).unref(); } catch (_) { } }
+  noDormir(hijo.pid);
   process.stdout.write(`  ${cielo('●')}  Encendiendo`);
   for (let i = 0; i < 60; i++) {
     await espera(500); if (TTY) process.stdout.write('.');
     const s = await salud();
     if (s) {
-      say(); say(`  ${verde('✓')}  ${fuerte('El sistema está encendido')} ${tenue('(versión ' + s.version + ')')}`);
+      say(); say(`  ${verde(S.bien)}  ${fuerte('El sistema está encendido')} ${tenue('(versión ' + s.version + ')')}`);
       mostrarDirecciones();
       const cod = codigoInstalacion();
-      if (cod) { say(); say(`  ${sol('PRIMER USO')}: abra el sistema y cree el PIN del dueño. Desde esta Mac no se pide código;`); say(`  desde un celular escriba este código:`); say(); say('        ' + fuerte(cod)); say(); say(tenue('  (también está guardado en datos/INSTALACION.txt)')); }
+      if (cod) { say(); say(`  ${sol('PRIMER USO')}: abra el sistema y cree el PIN del dueño. Desde ${EQUIPO} no se pide código;`); say(`  desde un celular escriba este código:`); say(); say('        ' + fuerte(cod)); say(); say(tenue('  (también está guardado en datos/INSTALACION.txt)')); }
       say(); say(tenue('  Puede cerrar esta ventana: el sistema sigue encendido. Para apagarlo use la opción 2.'));
       return true;
     }
     if (salio !== null) break;
   }
-  say(); say(`  ${rojo('✗')}  ${fuerte('El sistema no pudo encender.')} Esto es lo último que escribió:`); say();
+  say(); say(`  ${rojo(S.mal)}  ${fuerte('El sistema no pudo encender.')} Esto es lo último que escribió:`); say();
   for (const l of ultimasLineas(14)) say('     ' + tenue(l));
   if (salio === null && pidLanzador()) say(`\n  ${ambar('▲')}  Sigue intentándolo en segundo plano. Revise con la opción 6 en un momento.`);
   return false;
 }
 
+/* Que la computadora no se duerma por inactividad mientras el sistema esté encendido (la pantalla sí puede apagarse).
+   macOS: caffeinate espera al proceso. Windows: un PowerShell oculto pide «sistema requerido» y espera al proceso. */
+function noDormir(pid) {
+  try {
+    if (MAC) cp.spawn('caffeinate', ['-i', '-w', String(pid)], { detached: true, stdio: 'ignore' }).on('error', () => { }).unref();
+    else if (WIN) {
+      const ps = `Add-Type -Namespace IO -Name Energia -MemberDefinition '[DllImport("kernel32.dll")] public static extern uint SetThreadExecutionState(uint f);';` +
+        `[void][IO.Energia]::SetThreadExecutionState([uint32]'0x80000001'); Wait-Process -Id ${Number(pid)} -ErrorAction SilentlyContinue`;
+      cp.spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-WindowStyle', 'Hidden', '-Command', ps], { detached: true, stdio: 'ignore', windowsHide: true }).on('error', () => { }).unref();
+    }
+  } catch (_) { }
+}
+
 function mostrarDirecciones() {
-  say(`     En esta Mac        ${enlace(`http://localhost:${puerto()}`)}`);
+  say(`     ${MAC ? 'En esta Mac       ' : 'En esta computadora'} ${enlace(`http://localhost:${puerto()}`)}`);
   const red = direccionesRed();
   if (red.length) say(`     En los celulares   ${enlace(red[0].url)}   ${tenue('(mismo Wi-Fi · opción 5 para ver el código QR)')}`);
-  else say(`     ${ambar('▲')}  No se encontró la dirección de red (¿la Mac está conectada al Wi-Fi?)`);
+  else say(`     ${ambar('▲')}  No se encontró la dirección de red (¿${EL_EQUIPO} está conectada a la red?)`);
 }
 
 async function apagar() {
   const e = await estado();
-  if (!e.encendido && !e.pid) { say(`  ${verde('✓')}  El sistema ya está apagado.`); return true; }
+  if (!e.encendido && !e.pid) { say(`  ${verde(S.bien)}  El sistema ya está apagado.`); return true; }
   if (!e.pid) { say(`  ${ambar('▲')}  El sistema está encendido, pero no desde este menú. Ciérrelo en la ventana donde lo abrió (Control + C).`); return false; }
   fs.writeFileSync(ORDEN, new Date().toISOString() + '\n');
   process.stdout.write(`  ${cielo('●')}  Apagando`);
   for (let i = 0; i < 40; i++) {
     await espera(500); if (TTY) process.stdout.write('.');
-    if (!pidLanzador() && !(await salud())) { say(); say(`  ${verde('✓')}  ${fuerte('El sistema está apagado.')} Los celulares ya no pueden entrar hasta que lo encienda (opción 1).`); return true; }
+    if (!pidLanzador() && !(await salud())) { say(); say(`  ${verde(S.bien)}  ${fuerte('El sistema está apagado.')} Los celulares ya no pueden entrar hasta que lo encienda (opción 1).`); return true; }
   }
   const pid = pidLanzador();
   try { if (pid) { if (WIN) cp.spawnSync('taskkill', ['/pid', String(pid), '/t', '/f'], { stdio: 'ignore' }); else { try { process.kill(-pid, 'SIGTERM'); } catch (_) { process.kill(pid, 'SIGTERM'); } } } } catch (_) { }
   try { fs.rmSync(ORDEN, { force: true }); } catch (_) { }
   await espera(2500);
-  if (!pidLanzador() && !(await salud())) { say(); say(`  ${verde('✓')}  ${fuerte('El sistema está apagado.')}`); return true; }
-  say(); say(`  ${rojo('✗')}  No se pudo apagar. Reinicie la Mac.`); return false;
+  if (!pidLanzador() && !(await salud())) { say(); say(`  ${verde(S.bien)}  ${fuerte('El sistema está apagado.')}`); return true; }
+  say(); say(`  ${rojo(S.mal)}  No se pudo apagar. Reinicie ${EL_EQUIPO}.`); return false;
 }
 
 /* Dirección para celulares con su código QR dibujado en la Terminal */
 function celular() {
   const red = direccionesRed();
-  if (!red.length) { say(`  ${ambar('▲')}  No se encontró la dirección de esta Mac en la red. Conéctela al Wi-Fi de la tienda.`); return; }
+  if (!red.length) { say(`  ${ambar('▲')}  No se encontró la dirección de ${EQUIPO} en la red. Conéctela al Wi-Fi de la tienda.`); return; }
   let QR = null; try { QR = require(path.join(RAIZ, 'publico', 'js', 'qr.js')); } catch (_) { }
-  say(`  Con el celular en el ${fuerte('mismo Wi-Fi')} que esta Mac, apunte la cámara a este código o escriba la dirección:`); say();
+  say(`  Con el celular en el ${fuerte('mismo Wi-Fi')} que ${EQUIPO}, apunte la cámara a este código o escriba la dirección:`); say();
   if (QR) { for (const l of QR.terminal(red[0].url, { color: TTY }).split('\n')) say('     ' + l); say(); }
   say(`     ${enlace(red[0].url)}`);
   for (const r of red.slice(1, 3)) say(`     ${tenue('o también ' + r.url + ' (' + r.interfaz + ')')}`);
@@ -149,7 +165,7 @@ function novedades() {
     const t = fs.readFileSync(path.join(RAIZ, 'CHANGELOG.md'), 'utf8'), i = t.indexOf('\n## '), j = t.indexOf('\n## ', i + 4);
     const sec = t.slice(i + 1, j < 0 ? undefined : j).replace(/\*\*|`/g, '').split('\n');
     say('  ' + fuerte(sec[0].replace(/^## /, 'Novedades de la ')));
-    for (const l of sec.slice(1)) if (l.trim()) say('  ' + l.replace(/^- /, `  ${cielo('•')} `));
+    for (const l of sec.slice(1)) if (l.trim()) say('  ' + l.replace(/^- /, `  ${cielo(S.punto)} `));
   } catch (_) { say('  (No se encontró CHANGELOG.md.)'); }
   say(); say(tenue('  La guía completa está en docs/guia-de-uso.md.'));
 }
@@ -172,7 +188,7 @@ const seguir = () => preguntar(`\n  Presione ${fuerte('Enter')} para volver al m
 async function confirmar(que) {
   const r = await preguntar(`\n  ${ambar('▲')}  ${que}\n     Escriba ${fuerte('SI')} y presione ${fuerte('Enter')} para confirmar (solo Enter = cancelar): `);
   const ok = r !== null && /^s[ií]$/i.test(r.trim());
-  if (!ok) say(`  ${verde('✓')}  Cancelado: no se hizo ningún cambio.`);
+  if (!ok) say(`  ${verde(S.bien)}  Cancelado: no se hizo ningún cambio.`);
   return ok;
 }
 
@@ -180,7 +196,7 @@ const OPCIONES = [
   ['1', 'Encender el sistema'],
   ['2', 'Apagar el sistema', 'pide confirmar'],
   ['3', 'Reiniciar el sistema', 'pide confirmar'],
-  ['4', 'Abrir en esta Mac'],
+  ['4', 'Abrir en ' + EQUIPO],
   ['5', 'Abrir en un celular', 'dirección y código QR'],
   ['6', 'Ver lo último del registro'],
   ['7', 'Hacer un respaldo ahora'],
@@ -214,12 +230,12 @@ async function menu() {
     else if (op === '5') { const s = await estado(); if (!s.encendido) say(`  ${ambar('▲')}  El sistema está apagado: enciéndalo primero con la opción 1.`); celular(); await seguir(); }
     else if (op === '6') { registro(); await seguir(); }
     else if (op === '7') { respaldo(); await seguir(); }
-    else if (op === '8') { say('  Úselo solo si el dueño olvidó su PIN. Ventas, inventario y compras ' + fuerte('no se tocan') + '; se cierran las sesiones abiertas'); say('  y aparece un código para crear un PIN nuevo (desde esta Mac no se pide el código).'); if (await confirmar('¿Restablecer el PIN del dueño?')) restablecerPin(); await seguir(); }
+    else if (op === '8') { say('  Úselo solo si el dueño olvidó su PIN. Ventas, inventario y compras ' + fuerte('no se tocan') + '; se cierran las sesiones abiertas'); say('  y aparece un código para crear un PIN nuevo (desde ' + EQUIPO + ' no se pide el código).'); if (await confirmar('¿Restablecer el PIN del dueño?')) restablecerPin(); await seguir(); }
     else if (op === '9') { novedades(); await seguir(); }
     else aviso = `${ambar('▲')}  «${op.slice(0, 20)}» no es una opción. Escriba solo el número (por ejemplo 1) y presione Enter.`;
   }
   const e = await estado();
-  say(); say(`  ${sol('☀')}  Menú cerrado. ${e.encendido ? 'El sistema ' + fuerte('sigue encendido') + '.' : 'El sistema está apagado.'} ${tenue('Para volver, abra iniciar.command otra vez.')}`); say();
+  say(); say(`  ${sol(S.sol)}  Menú cerrado. ${e.encendido ? 'El sistema ' + fuerte('sigue encendido') + '.' : 'El sistema está apagado.'} ${tenue('Para volver, abra ' + (WIN ? 'iniciar.bat' : 'iniciar.command') + ' otra vez.')}`); say();
   rl.close();
 }
 
@@ -237,5 +253,5 @@ async function principal() {
   else { say('Uso: node arranque/menu.js [encender | apagar | reiniciar | estado | respaldo | celular]   (sin nada, abre el menú)'); ok = false; }
   process.exit(ok ? 0 : 1);
 }
-if (require.main === module) principal().catch(e => { console.error('\n  ' + rojo('✗') + '  ' + (e && e.message || e)); process.exit(1); });
+if (require.main === module) principal().catch(e => { console.error('\n  ' + rojo(S.mal) + '  ' + (e && e.message || e)); process.exit(1); });
 module.exports = { estado, puerto };

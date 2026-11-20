@@ -61,7 +61,7 @@ for v in $lista; do
 
 ---
 
-**Cómo instalar:** descargue \`$PRODUCTO-v$v.zip\`, descomprímalo en la Mac y siga \`LEEME.txt\` (doble clic en \`iniciar.command\`). Requiere Node.js 22.13 o más reciente.
+**Cómo instalar:** descargue \`$PRODUCTO-v$v.zip\`, descomprímalo en la computadora de la tienda y siga \`LEEME.txt\` (doble clic en \`iniciar.command\` en Mac o en \`iniciar.bat\` en Windows). Requiere Node.js 22.13 o más reciente.
 
 **Cómo actualizar una instalación existente:** apague el sistema (opción 2 del menú), reemplace todo **excepto la carpeta \`datos/\`** y vuelva a encender. La base de datos se actualiza sola.
 

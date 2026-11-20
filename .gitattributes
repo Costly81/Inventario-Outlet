@@ -1,5 +1,7 @@
 # Los scripts de arranque de macOS deben conservar finales de línea Unix (LF) o la Terminal no los ejecuta.
 *.command text eol=lf
+# Los .bat de Windows necesitan finales de línea de Windows (CRLF) o cmd.exe los lee mal.
+*.bat      text eol=crlf
 *.sh      text eol=lf
 *.js      text eol=lf
 *.css     text eol=lf
