@@ -1,7 +1,7 @@
 # Corre las pruebas automáticas en cada cambio subido a GitHub (y en cada Pull Request),
 # en Node.js 22 y 24, para enterarse de inmediato si algo se rompió.
 name: Pruebas
-run-name: Pruebas · ${{ github.event.head_commit.message || github.ref_name }}
+run-name: Pruebas · ${{ github.ref_name }}
 
 on:
   push:
