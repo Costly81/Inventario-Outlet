@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Icono: un gancho de ropa sobre cielo cian, con un sol (el dólar) -->
+  <defs>
+    <linearGradient id="f" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#46c8f7"/><stop offset="1" stop-color="#0889c2"/></linearGradient>
+    <radialGradient id="s" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#ffe2a3"/><stop offset="1" stop-color="#f5a524"/></radialGradient>
+  </defs>
+  <rect width="512" height="512" rx="116" fill="url(#f)"/>
+  <circle cx="372" cy="146" r="58" fill="url(#s)"/>
+  <path d="M256 168c0-22 18-40 40-40m-40 40v20L96 300c-14 9-8 32 9 32h302c17 0 23-23 9-32L256 188" fill="none" stroke="#fff" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M138 380h236" stroke="#fff" stroke-opacity=".55" stroke-width="22" stroke-linecap="round"/>
+</svg>

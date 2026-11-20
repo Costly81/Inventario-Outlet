@@ -1,0 +1,52 @@
+# Publica las versiones de Inventario Outlet como «Releases» de GitHub (etiqueta vX.Y.Z, notas y ZIP de instalación).
+#
+# Es automático: cada vez que cambia el archivo VERSION en `main` (una versión nueva), primero corre las pruebas y, si
+# pasan, crea la etiqueta y la Release de esa versión con su ZIP y su huella .sha256. Si la Release ya existe, no hace nada.
+# También se puede ejecutar a mano: pestaña «Actions» → «Publicar versiones» → «Run workflow».
+# Y si alguien sube una etiqueta v1.2.3 (`git push origin v1.2.3`), publica la Release de esa etiqueta.
+#
+# Las notas salen de la sección de esa versión en CHANGELOG.md.
+name: Publicar versiones
+run-name: Publicar versiones como Releases
+
+on:
+  workflow_dispatch:
+    inputs:
+      versiones:
+        description: 'Versiones a publicar (por ejemplo: 1.1.0 1.0.0). Vacío = la versión del archivo VERSION.'
+        required: false
+        default: ''
+  push:
+    branches: [main]
+    paths:
+      - VERSION
+      - .github/workflows/publicar-versiones.yml
+      - .github/scripts/publicar-versiones.sh
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publicar-versiones
+  cancel-in-progress: false
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Pruebas
+        run: npm run probar
+      - name: Publicar las Releases que falten
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSIONES: ${{ inputs.versiones }}
+          ETIQUETA: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
+        run: bash .github/scripts/publicar-versiones.sh

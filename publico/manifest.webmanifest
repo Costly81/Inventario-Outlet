@@ -1,0 +1,17 @@
+{
+  "name": "Inventario Outlet",
+  "short_name": "Outlet",
+  "description": "Inventario, ventas y dólar en vivo",
+  "lang": "es-MX",
+  "start_url": "/#/vender",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f2fbff",
+  "theme_color": "#cdeffd",
+  "icons": [
+    { "src": "/icono.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/icono-180.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "/icono-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

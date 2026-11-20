@@ -1,0 +1,11 @@
+# Los scripts de arranque de macOS deben conservar finales de línea Unix (LF) o la Terminal no los ejecuta.
+*.command text eol=lf
+*.sh      text eol=lf
+*.js      text eol=lf
+*.css     text eol=lf
+*.html    text eol=lf
+*.md      text eol=lf
+
+# Lo que no forma parte del paquete de instalación (el ZIP de cada Release)
+.github        export-ignore
+.gitattributes export-ignore

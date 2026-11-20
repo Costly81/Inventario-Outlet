@@ -1,0 +1,7 @@
+# Datos del negocio: base de datos, respaldos, registro y configuración local. Nunca van a Git.
+datos/
+# Carpetas de trabajo
+entregas/
+node_modules/
+*.log
+.DS_Store

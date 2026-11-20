@@ -1,0 +1,43 @@
+LICENCIA DE USO RESTRINGIDO · INVENTARIO OUTLET
+Versión 1.0 · 19 de noviembre de 2026
+
+Copyright (c) 2026 CAEROLI SOLUCIONES TECNOLÓGICAS, S.A.S. Todos los derechos reservados.
+
+Este archivo se aplica al software "Inventario Outlet" (en adelante, el "Software"): su código
+fuente, programas, scripts, documentación, textos y pruebas, en todas sus versiones. El titular
+de los derechos es CAEROLI SOLUCIONES TECNOLÓGICAS, S.A.S. (en adelante, el "Titular"),
+propietario único del Software.
+
+1. DERECHOS RESERVADOS
+   El Software es propiedad exclusiva del Titular. No se concede ninguna licencia, expresa ni
+   implícita, salvo lo que este archivo dice expresamente.
+
+2. LO QUE SE PERMITE SIN PEDIR AUTORIZACIÓN
+   a) Leer el código y la documentación en este repositorio, y estudiarlos para aprender.
+   b) Usar las funciones que GitHub ofrece sobre los repositorios conforme a sus Condiciones de
+      Servicio. Esto no concede ningún otro derecho sobre el Software.
+
+3. LO QUE REQUIERE AUTORIZACIÓN ESCRITA DEL TITULAR
+   Sin autorización previa y por escrito del Titular, no se puede:
+   a) usar el Software en un negocio real, con ventas, inventario o datos de un negocio;
+   b) copiar, modificar, traducir o crear obras derivadas del Software;
+   c) distribuir, publicar, sublicenciar, prestar, rentar o vender el Software o parte de él;
+   d) ofrecer el Software, o una versión derivada, como producto o como servicio a terceros;
+   e) quitar o alterar este aviso de derechos o los créditos de autoría.
+
+4. DATOS DEL NEGOCIO
+   Los datos que el negocio registra con el Software (carpeta datos/) pertenecen al negocio que
+   los registra y no forman parte del Software.
+
+5. SERVICIOS DE TERCEROS
+   El Software consulta servicios públicos de tipo de cambio (Google Finanzas, Yahoo Finanzas, ExchangeRate-API,
+   Frankfurter y, de forma opcional, Banxico). Su disponibilidad y exactitud dependen de esos
+   terceros; el tipo de cambio mostrado es informativo.
+
+6. SIN GARANTÍA
+   El Software se entrega "tal cual", sin garantía de ningún tipo. El Titular no responde por
+   pérdidas derivadas de su uso, de fallas del equipo o de datos no respaldados.
+
+7. CONTACTO
+   Para solicitar autorizaciones: CAEROLI SOLUCIONES TECNOLÓGICAS, S.A.S., por medio del
+   propietario de este repositorio en GitHub.

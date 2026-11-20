@@ -1,0 +1,33 @@
+# Corre las pruebas automáticas en cada cambio subido a GitHub (y en cada Pull Request),
+# en Node.js 22 y 24, para enterarse de inmediato si algo se rompió.
+name: Pruebas
+run-name: Pruebas · ${{ github.event.head_commit.message || github.ref_name }}
+
+on:
+  push:
+    branches: ['**']
+    paths-ignore: ['docs/**', '*.md', 'LEEME.txt']
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  pruebas:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      matrix:
+        node: ['22', '24']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Revisar que los archivos JavaScript no tengan errores de escritura
+        run: |
+          for f in $(git ls-files 'servidor/*.js' 'servidor/**/*.js' 'arranque/*.js' 'publico/js/qr.js' 'pruebas/*.js'); do node --check "$f"; done
+          for f in $(git ls-files 'publico/js/*.js' 'publico/js/**/*.js' | grep -v qr.js); do node --input-type=module --check < "$f"; done
+          bash -n iniciar.command && bash -n encender.command
+      - name: Pruebas del servidor
+        run: npm run probar
