@@ -9,7 +9,7 @@
    ───────────────────────────────────────────────────────────────────────────── */
 import { estado, api, avisar, escuchar, conectarEventos, desconectarEventos, cargarCatalogo, esc, esDueno, iniciales, tcFmt, mxn, vibrar, haceCuanto } from './nucleo.js';
 import { ico } from './iconos.js';
-import { aviso, avisoError, hoja, al, confirmar, hayHojas } from './ui.js';
+import { aviso, avisoError, hoja, al, confirmar, hayHojas, cerrarHojas } from './ui.js';
 
 const app = document.getElementById('app');
 
@@ -39,6 +39,7 @@ async function mostrarRuta() {
   const { nombre, params } = rutaDeHash();
   const anterior = document.getElementById('vista'); if (!anterior) return;
   if (vistaActual.limpiar) { try { vistaActual.limpiar(); } catch (_) { } }
+  cerrarHojas();
   /* Contenedor nuevo en cada pantalla: así los oyentes de la pantalla anterior desaparecen con ella */
   const contenedor = anterior.cloneNode(false); anterior.replaceWith(contenedor);
   vistaActual = { nombre, modulo: null, limpiar: null };
@@ -237,15 +238,23 @@ function tecladoPin(caja, enviar, volver) {
   pinta();
 }
 
-/* Primer uso (o PIN olvidado): crear el PIN del dueño */
+/* Primer uso (o PIN olvidado): el PIN del dueño se crea SOLO desde la computadora de la tienda */
 function pantallaInstalar(e) {
   const restablecer = e.instalacion === 'restablecer';
+  if (!e.local) {
+    app.innerHTML = `<div class="entrada-pantalla"><div class="entrada-caja vista-entra">
+      <div class="marca-logo">${ico('gancho')}</div>
+      <h1>${restablecer ? 'Falta el PIN nuevo del dueño' : 'Falta crear el PIN del dueño'}</h1>
+      <p>Por seguridad, eso se hace en la <b>computadora de la tienda</b>: en la ventana del sistema elija la opción <b>1</b> (abrir en esta computadora).<br>Después, desde aquí se entra con el nombre y el PIN.</p>
+      <button class="btn btn-primario btn-grande" data-r>${ico('recargar')} Ya lo hice</button></div></div>`;
+    app.querySelector('[data-r]').onclick = () => pantallaEntrar();
+    return;
+  }
   app.innerHTML = `<div class="entrada-pantalla"><div class="entrada-caja vista-entra" style="text-align:left">
     <div class="marca-logo">${ico('gancho')}</div>
     <h1 style="text-align:center">${restablecer ? 'PIN nuevo del dueño' : 'Bienvenido'}</h1>
-    <p style="text-align:center">${restablecer ? 'Se pidió restablecer el PIN desde el menú de arranque.' : 'Vamos a dejar listo el sistema de la tienda. Toma un minuto.'}</p>
+    <p style="text-align:center">${restablecer ? 'Se pidió restablecer el PIN desde la ventana del sistema. Ventas e inventario siguen intactos.' : 'Vamos a dejar listo el sistema de su negocio. Usted será el dueño: verá y controlará todo.'}</p>
     <form class="formulario tarjeta" data-f>
-      ${e.local ? '<div class="nota">' + ico('info') + '<span>Está en la computadora de la tienda: no hace falta el código.</span></div>' : `<label class="campo"><span>Código de instalación</span><input name="codigo" autocomplete="off" placeholder="XXXX-XXXX-XXXX" required style="text-transform:uppercase;letter-spacing:.08em"><small>Aparece en la ventana del menú de arranque de la computadora de la tienda (y en datos/INSTALACION.txt).</small></label>`}
       <label class="campo"><span>${restablecer ? 'Nombre (opcional)' : 'Su nombre'}</span><input name="nombre" autocomplete="name" ${restablecer ? '' : 'required'} maxlength="30" placeholder="Por ejemplo: Ana"></label>
       <div class="doble"><label class="campo"><span>PIN (4 a 6 números)</span><input name="pin" type="password" inputmode="numeric" maxlength="6" pattern="\\d{4,6}" required autocomplete="new-password"></label>
       <label class="campo"><span>Repita el PIN</span><input name="pin2" type="password" inputmode="numeric" maxlength="6" required autocomplete="new-password"></label></div>
@@ -254,7 +263,7 @@ function pantallaInstalar(e) {
   app.querySelector('[data-f]').onsubmit = async ev => {
     ev.preventDefault(); const f = new FormData(ev.target);
     if (f.get('pin') !== f.get('pin2')) return aviso('Los dos PIN no coinciden.', { tipo: 'mal' });
-    try { const r = await api('/api/instalar', { metodo: 'POST', datos: { codigo: f.get('codigo'), nombre: f.get('nombre'), pin: f.get('pin') } }); await iniciarSesion(r.csrf); aviso('¡Listo! El sistema es suyo.'); }
+    try { const r = await api('/api/instalar', { metodo: 'POST', datos: { nombre: f.get('nombre'), pin: f.get('pin') } }); await iniciarSesion(r.csrf); aviso('¡Listo! Ahora agregue a quien vende en Ajustes → Personas.'); }
     catch (er) { avisoError(er); }
   };
 }
@@ -288,6 +297,26 @@ escuchar('cambio', d => {
   if (d.que === 'venta' && !d.anulada && esDueno() && d.usuario && d.usuario !== estado.sesion.usuario.nombre) aviso(`${d.usuario} vendió ${mxn(d.total)} (${d.piezas} pza${d.piezas === 1 ? '' : 's'})`, { tipo: 'info' });
 });
 addEventListener('hashchange', mostrarRuta);
+/* El dueño instaló una versión nueva: todas las pantallas abiertas esperan a que vuelva y se recargan solas */
+escuchar('actualizando', d => pantallaActualizando(d && d.accion));
+export async function pantallaActualizando(accion = 'instalar') {
+  if (document.querySelector('.pantalla-actualizando')) return;
+  const antes = estado.sesion && estado.sesion.version;
+  desconectarEventos();
+  const el = document.createElement('div'); el.className = 'pantalla-actualizando';
+  el.innerHTML = `<div><div class="rueda"></div><h1 style="margin:0;font-size:var(--t-xl)">${accion === 'revertir' ? 'Regresando a la versión anterior…' : 'Actualizando el sistema…'}</h1>
+    <p class="sec" data-t>No cierre esta página. Tarda unos segundos y se recarga sola.</p></div>`;
+  document.body.appendChild(el);
+  const t0 = Date.now(); let cayo = false;
+  for (;;) {
+    await new Promise(r => setTimeout(r, 1500));
+    try {
+      const r = await fetch('/api/salud', { cache: 'no-store' }); const j = await r.json();
+      if (j.ok && (cayo || j.version !== antes)) { el.querySelector('[data-t]').textContent = `Listo: versión ${j.version}. Recargando…`; setTimeout(() => location.reload(), 900); return; }
+    } catch (_) { cayo = true; }
+    if (Date.now() - t0 > 120000) { el.querySelector('[data-t]').innerHTML = 'Está tardando más de lo normal. Revise la ventana del sistema (opción 4, registro) y <a href="/">recargue</a>.'; return; }
+  }
+}
 /* Al volver a la pestaña después de un rato, se refresca el dólar */
 document.addEventListener('visibilitychange', async () => { if (!document.hidden && estado.sesion) { try { const j = await api('/api/tc'); estado.tc = j.tc; avisar('tc', estado.tc); } catch (_) { } } });
 

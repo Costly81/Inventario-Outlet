@@ -469,7 +469,8 @@ table.tabla { width: 100%; border-collapse: collapse; font-size: var(--t-sm); }
 .hoja-cabeza h2 { margin: 0; font-size: var(--t-lg); letter-spacing: -.02em; flex: 1; min-width: 0; }
 .hoja-cuerpo { overflow-y: auto; padding: 4px 20px 22px; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
 .hoja-pie { flex: none; padding: 12px 20px 16px; border-top: 1px solid var(--linea); background: rgba(255, 255, 255, .85); display: flex; gap: 10px; }
-.hoja-pie .btn { flex: 1; }
+.hoja-pie .btn { flex: 1 1 auto; padding: 0 14px; }
+@media (max-width: 420px) { .hoja-pie { flex-wrap: wrap; } }
 @media (min-width: 700px) {
   .hoja { left: 50%; right: auto; bottom: auto; top: 50%; width: min(var(--ancho, 560px), calc(100vw - 48px)); max-height: 88vh; border-radius: var(--r-hoja);
     transform: translate(-50%, -46%) scale(.94); opacity: 0; transition: transform .45s var(--muelle), opacity .25s; }
@@ -586,3 +587,31 @@ table.tabla { width: 100%; border-collapse: collapse; font-size: var(--t-sm); }
 .qr { width: 220px; max-width: 100%; margin: 0 auto; padding: 14px; background: #fff; border-radius: 22px; box-shadow: var(--sombra-2); }
 .qr svg { width: 100%; height: auto; }
 .url-grande { font-size: var(--t-lg); font-weight: 800; text-align: center; word-break: break-all; color: var(--cielo-hondo); }
+
+/* ───────────── 13. Fotos de productos (1.2) ───────────── */
+.producto-ilustracion .foto, .linea-carrito .ico .foto, .fila-lista .ico .foto { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.producto-ilustracion:has(.foto) .producto-tallas, .producto-ilustracion:has(.foto) .producto-stock { box-shadow: 0 2px 8px rgba(0, 0, 0, .18); }
+.linea-carrito .ico, .fila-lista .ico { position: relative; overflow: hidden; }
+.foto-caja { position: relative; aspect-ratio: 4 / 3; border-radius: var(--r-tarjeta); overflow: hidden; display: grid; place-items: center; font-size: 4rem;
+  background: radial-gradient(circle at 50% 60%, color-mix(in srgb, var(--c, var(--cielo)) 24%, white), color-mix(in srgb, var(--c, var(--cielo)) 8%, white)); box-shadow: inset 0 0 0 1.5px var(--linea); }
+.foto-caja img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.foto-caja .acciones-foto { position: absolute; left: 10px; right: 10px; bottom: 10px; display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+.foto-caja .acciones-foto .btn { background: rgba(255, 255, 255, .92); color: var(--tinta); box-shadow: var(--sombra-2); }
+.foto-caja .subiendo { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(255, 255, 255, .7); font-size: var(--t-md); font-weight: 800; color: var(--cielo-hondo); }
+.foto-ficha { max-height: 340px; aspect-ratio: auto; height: 260px; margin-bottom: 14px; }
+@media (min-width: 700px) { .foto-ficha { height: 320px; } }
+
+/* ───────────── 14. Actualizar el sistema (1.2) ───────────── */
+.zona-zip { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 28px 16px; border-radius: var(--r-tarjeta); border: 2px dashed var(--cielo-300);
+  background: var(--cielo-50); text-align: center; color: var(--tinta-2); cursor: pointer; transition: background .2s, border-color .2s, transform .2s var(--muelle); }
+.zona-zip svg { width: 40px; height: 40px; color: var(--cielo); }
+.zona-zip b { color: var(--tinta); font-size: var(--t-md); }
+.zona-zip.encima { background: var(--cielo-100); border-color: var(--cielo); transform: scale(1.015); }
+.barra-avance { height: 8px; border-radius: 4px; background: var(--linea); overflow: hidden; }
+.barra-avance i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--cielo-300), var(--cielo)); transition: width .2s; }
+.novedades { max-height: 260px; overflow: auto; padding: 12px 14px; border-radius: 16px; background: #fff; box-shadow: inset 0 0 0 1px var(--linea); font-size: var(--t-sm); }
+.novedades ul { margin: 0; padding-left: 18px; } .novedades li { margin: 4px 0; }
+.pantalla-actualizando { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: 24px; text-align: center;
+  background: linear-gradient(180deg, #cdeffd, var(--cielo-50)); animation: aparecer .4s var(--salida); }
+.pantalla-actualizando .rueda { width: 64px; height: 64px; margin: 0 auto 18px; border-radius: 50%; border: 6px solid var(--cielo-100); border-top-color: var(--cielo); animation: girar 1s linear infinite; }
+@keyframes girar { to { transform: rotate(360deg); } }

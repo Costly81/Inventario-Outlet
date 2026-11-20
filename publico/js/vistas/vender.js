@@ -6,7 +6,7 @@
    Si el Wi-Fi falla al cobrar, la venta se guarda en el celular y se envía sola al volver la conexión
    (cada venta lleva una clave única, así nunca se registra dos veces).
    ───────────────────────────────────────────────────────────────────────────── */
-import { estado, api, avisar, escuchar, cargarCatalogo, esc, mxn, usd, tcFmt, uuid, vibrar, NOMBRES, esDueno } from '../nucleo.js';
+import { estado, api, avisar, escuchar, cargarCatalogo, esc, mxn, usd, tcFmt, uuid, vibrar, NOMBRES, esDueno, fotoDe } from '../nucleo.js';
 import { ico } from '../iconos.js';
 import { aviso, avisoError, hoja, al, tecladoNumerico, volar, chispas, esqueletos, vacio, confirmar, $ } from '../ui.js';
 
@@ -75,7 +75,7 @@ function pintarProductos() {
     const tallas = p.variantes.length > 1 ? `<span class="producto-tallas insignia i-gris">${p.variantes.length} tallas</span>` : '';
     const stock = p.existencia <= 0 ? '<span class="producto-stock insignia i-gris">Agotado</span>' : `<span class="producto-stock insignia ${p.existencia <= (p.minimo ?? estado.sesion.ajustes.stockMinimo) ? 'i-aviso' : 'i-cielo'}">${p.existencia} pz${p.existencia === 1 ? '' : 's'}</span>`;
     return `<button class="producto ${p.existencia <= 0 ? 'agotado' : ''} ${enCarrito ? 'tiene' : ''}" data-prod="${p.id}" style="--c:${esc(p.color)}" aria-label="${esc(p.nombre)}, ${precio}">
-      <span class="producto-ilustracion"><span class="emoji">${esc(p.emoji)}</span>${tallas}${stock}<span class="en-carrito">${enCarrito || ''}</span></span>
+      <span class="producto-ilustracion">${fotoDe(p) ? `<img class="foto" src="${fotoDe(p)}" alt="" loading="lazy" decoding="async">` : `<span class="emoji">${esc(p.emoji)}</span>`}${tallas}${stock}<span class="en-carrito">${enCarrito || ''}</span></span>
       <span class="producto-info"><span class="producto-nombre">${esc(p.nombre)}</span><span class="producto-precio">${precio}</span></span></button>`;
   }).join('');
 }
@@ -84,7 +84,7 @@ function pintarProductos() {
 function tocarProducto(id, el) {
   const p = estado.catalogo.productos.find(x => x.id === id); if (!p) return;
   if (p.variantes.length === 1) return agregar(p, p.variantes[0], el);
-  const h = hoja({ titulo: `${p.emoji} ${p.nombre}`, html: `<p class="sec" style="margin:0 0 14px">Elija la talla</p>
+  const h = hoja({ titulo: `${p.emoji} ${p.nombre}`, html: `${fotoDe(p) ? `<div class="foto-caja" style="height:200px;aspect-ratio:auto;margin-bottom:12px"><img src="${fotoDe(p)}" alt="${esc(p.nombre)}"></div>` : ''}<p class="sec" style="margin:0 0 14px">Elija la talla</p>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:10px">${p.variantes.map(v => {
       const enC = (estado.carrito.find(l => l.varianteId === v.id) || {}).cantidad || 0;
       return `<button class="metodo ${v.existencia <= 0 ? '' : ''}" data-v="${v.id}" style="${v.existencia <= 0 ? 'opacity:.45' : ''}">
@@ -103,7 +103,7 @@ function agregar(p, v, origen, origen2) {
     return aviso(v.existencia <= 0 ? `No hay piezas de ${p.nombre}${v.nombre !== 'Única' ? ' talla ' + v.nombre : ''} en el sistema.` : `Solo hay ${v.existencia} en el sistema.`, { tipo: 'mal' });
   }
   if (linea) linea.cantidad++;
-  else estado.carrito.push({ varianteId: v.id, productoId: p.id, nombre: p.nombre, talla: v.nombre, emoji: p.emoji, color: p.color, precio: v.precio, precioLista: v.precio, cantidad: 1, existencia: v.existencia });
+  else estado.carrito.push({ varianteId: v.id, productoId: p.id, nombre: p.nombre, talla: v.nombre, emoji: p.emoji, foto: p.foto, color: p.color, precio: v.precio, precioLista: v.precio, cantidad: 1, existencia: v.existencia });
   vibrar(14);
   const destino = matchMedia('(min-width: 1000px)').matches ? raiz.querySelector('[data-panel]') : raiz.querySelector('[data-barra]');
   volar(origen2 || origen, destino, p.emoji);
@@ -134,7 +134,7 @@ const totalCarrito = () => estado.carrito.reduce((s, l) => s + l.precio * l.cant
 const piezasCarrito = () => estado.carrito.reduce((s, l) => s + l.cantidad, 0);
 function lineasHTML() {
   return estado.carrito.map(l => `<div class="linea-carrito" style="--c:${esc(l.color)}">
-    <span class="ico">${esc(l.emoji)}</span>
+    <span class="ico">${l.foto ? `<img class="foto" src="${fotoDe(l)}" alt="">` : esc(l.emoji)}</span>
     <span style="min-width:0"><div class="nom">${esc(l.nombre)}${l.talla !== 'Única' ? ` <span class="tenue">· ${esc(l.talla)}</span>` : ''}</div>
       <button class="pre" data-precio="${l.varianteId}">${mxn(l.precio)}${l.precio !== l.precioLista ? ' (especial)' : ''} c/u</button></span>
     <span class="paso"><button data-menos="${l.varianteId}" aria-label="Quitar uno">${ico('menos')}</button><span class="num">${l.cantidad}</span><button data-mas="${l.varianteId}" aria-label="Agregar uno">${ico('mas')}</button></span>

@@ -227,7 +227,8 @@ describe('Servidor HTTP (de punta a punta)', () => {
 
   test('primer uso, PIN, CSRF y permisos por papel', async () => {
     assert.equal((await pedir('/api/estado')).j.instalacion, 'instalar');
-    /* Desde la misma computadora no se pide código */
+    /* El PIN del dueño solo se crea desde la propia computadora (aquí las pruebas llegan desde 127.0.0.1) */
+    assert.throws(() => app.auth.instalar({ nombre: 'Intruso', pin: '2580' }, false), /computadora de la tienda/);
     const ins = await pedir('/api/instalar', { metodo: 'POST', datos: { nombre: 'Ana', pin: '1357' } });
     assert.equal(ins.status, 200); const due = { cookie: ins.cookie, csrf: ins.j.csrf };
     assert.equal((await pedir('/api/tablero', { cookie: due.cookie })).status, 200);
@@ -246,9 +247,16 @@ describe('Servidor HTTP (de punta a punta)', () => {
     await pedir('/api/compras', { metodo: 'POST', datos: { renglones: [{ varianteId: vid, cantidad: 3, costo: 4 }], impuesto: 1 }, ...due });
     const cat = await pedir('/api/catalogo', { cookie: ven.cookie });
     assert.equal(cat.j.productos[0].existencia, 3); assert.equal(cat.j.productos[0].costoUsd, undefined);
+    /* El vendedor no puede comprar, ajustar, ver reportes, mermas, fotos ni actualizar */
+    for (const [m, ruta] of [['POST', '/api/compras'], ['GET', '/api/reportes'], ['GET', '/api/proyeccion'], ['PUT', '/api/ajustes'], ['POST', '/api/mermas'], ['GET', '/api/usuarios'],
+      ['POST', `/api/productos/${p.j.id}/foto`], ['GET', '/api/actualizacion'], ['POST', '/api/actualizacion/instalar'], ['GET', '/api/exportar/ventas.csv']])
+      assert.equal((await pedir(ruta, { metodo: m, datos: m === 'GET' ? undefined : {}, ...ven })).status, 403, `${m} ${ruta}`);
     const v = await pedir('/api/ventas', { metodo: 'POST', datos: { clave: 'k1', renglones: [{ varianteId: vid, cantidad: 1 }], metodo: 'efectivo', recibido: 200 }, ...ven });
     assert.equal(v.status, 200); assert.equal(v.j.venta.cambio, 50); assert.equal(v.j.venta.costo_mxn, undefined);
-    const t = (await pedir('/api/tablero', { cookie: due.cookie })).j;
+    /* La ficha del producto no le enseña costos al vendedor (ni en sus movimientos) */
+    const ficha = (await pedir('/api/productos/' + p.j.id, { cookie: ven.cookie })).j.producto;
+    assert.equal(ficha.costoMxn, undefined); assert.equal(ficha.lotes.length, 0); assert.ok(ficha.movimientos.every(m => m.tipo === 'venta' || m.importe === null));
+        const t = (await pedir('/api/tablero', { cookie: due.cookie })).j;
     assert.equal(t.resumenHoy.ventas.num, 1); assert.ok(t.resumenHoy.ganancia.mxn > 0);
     const csv = await fetch(url + '/api/exportar/ventas.csv', { headers: { Cookie: due.cookie } });
     assert.match(await csv.text(), /Gorra/);
@@ -259,5 +267,97 @@ describe('Servidor HTTP (de punta a punta)', () => {
     assert.equal(r.status, 200); assert.match(r.headers.get('content-security-policy'), /default-src 'self'/);
     assert.equal((await fetch(url + '/../servidor/index.js')).status !== 200, true);
     assert.equal((await pedir('/api/no-existe')).status, 404);
+  });
+});
+
+/* ═════════ Versión 1.2: fotos, actualizaciones desde Ajustes y permisos ═════════ */
+const zlib = require('zlib');
+const ACT = require('../arranque/actualizar.js');
+const Actualizacion = require('../servidor/lib/actualizacion.js');
+const ZIP = require('../servidor/lib/zip.js');
+const Fotos = require('../servidor/lib/fotos.js');
+
+/* Arma un .zip en memoria (como los de GitHub: carpeta inventario-outlet/, Deflate y permisos Unix) */
+function armarZip(archivos, prefijo = 'inventario-outlet/') {
+  const locales = [], centrales = []; let off = 0;
+  for (const [nombre, contenido, modo = 0o644] of archivos) {
+    const datos = Buffer.from(contenido), comp = zlib.deflateRawSync(datos), n = Buffer.from(prefijo + nombre);
+    const crc = zlib.crc32(datos);
+    const l = Buffer.alloc(30); l.writeUInt32LE(0x04034b50, 0); l.writeUInt16LE(20, 4); l.writeUInt16LE(0x800, 6); l.writeUInt16LE(8, 8);
+    l.writeUInt32LE(crc, 14); l.writeUInt32LE(comp.length, 18); l.writeUInt32LE(datos.length, 22); l.writeUInt16LE(n.length, 26);
+    const c = Buffer.alloc(46); c.writeUInt32LE(0x02014b50, 0); c.writeUInt16LE(0x031e, 4); c.writeUInt16LE(20, 6); c.writeUInt16LE(0x800, 8); c.writeUInt16LE(8, 10);
+    c.writeUInt32LE(crc, 16); c.writeUInt32LE(comp.length, 20); c.writeUInt32LE(datos.length, 24); c.writeUInt16LE(n.length, 28); c.writeUInt32LE(((0o100000 | modo) << 16) >>> 0, 38); c.writeUInt32LE(off, 42);
+    locales.push(l, n, comp); centrales.push(c, n); off += 30 + n.length + comp.length;
+  }
+  const dir = Buffer.concat(centrales), fin = Buffer.alloc(22);
+  fin.writeUInt32LE(0x06054b50, 0); fin.writeUInt16LE(archivos.length, 8); fin.writeUInt16LE(archivos.length, 10); fin.writeUInt32LE(dir.length, 12); fin.writeUInt32LE(off, 16);
+  return Buffer.concat([...locales, dir, fin]);
+}
+const versionFalsa = (v, extra = []) => [['VERSION', v + '\n'], ['package.json', JSON.stringify({ name: 'inventario-outlet', version: v, engines: { node: '>=22.13.0' } })],
+  ['servidor/index.js', `// servidor ${v}\n`], ['arranque/lanzador.js', '// lanzador\n'], ['publico/index.html', '<!doctype html>'], ['iniciar.command', '#!/bin/bash\n', 0o755],
+  ['CHANGELOG.md', `# Historial\n\n## ${v} · hoy\n\n- **Algo nuevo** en la ${v}.\n\n## 1.0.0 · antes\n\n- Viejo.\n`], ...extra];
+
+describe('Actualizar el sistema desde Ajustes', () => {
+  test('lector de .zip: contenido, permisos y protección contra rutas raras', () => {
+    const e = ZIP.leer(armarZip([['a/b.txt', 'hola'], ['x.sh', 'echo', 0o755]]));
+    assert.equal(e[0].nombre, 'inventario-outlet/a/b.txt'); assert.equal(e[0].leer().toString(), 'hola'); assert.equal(e[1].modo & 0o111, 0o111);
+    assert.throws(() => ZIP.leer(Buffer.from('esto no es un zip, solo texto suficientemente largo')), /no es un .zip/);
+  });
+
+  test('revisa el .zip, lo prepara, instala, confirma y puede regresar', () => {
+    const raiz = tmp(), datos = path.join(raiz, 'datos');
+    for (const [n, c] of versionFalsa('1.0.0', [['viejo.txt', 'se va']])) { fs.mkdirSync(path.dirname(path.join(raiz, n)), { recursive: true }); fs.writeFileSync(path.join(raiz, n), c); }
+    fs.mkdirSync(datos); fs.writeFileSync(path.join(datos, 'inventario.sqlite'), 'MIS DATOS');
+    const act = Actualizacion.crear({ raiz, datos, version: '1.0.0' });
+    /* Rechazos claros */
+    assert.throws(() => act.preparar(armarZip(versionFalsa('1.0.0'))), /no es más nueva/);
+    assert.throws(() => act.preparar(armarZip([['VERSION', '2.0.0']])), /no es una versión de Inventario Outlet/);
+    assert.throws(() => act.preparar(armarZip(versionFalsa('2.0.0', [['../fuera.txt', 'x']]), '')), /ruta no permitida/);
+    /* Preparar la 1.3.0 (con novedades) */
+    const info = act.preparar(armarZip(versionFalsa('1.3.0', [['datos/inventario.sqlite', 'NO DEBE ENTRAR']])));
+    assert.equal(info.version, '1.3.0'); assert.match(info.novedades, /Algo nuevo/);
+    assert.ok(!fs.existsSync(path.join(ACT.rutas(datos).arbol, 'datos')));        // datos/ jamás viene en una actualización
+    /* El lanzador cumple la orden con el servidor apagado */
+    ACT.escribirJSON(ACT.rutas(datos).orden, { accion: 'instalar' });
+    assert.match(ACT.cumplirOrden(raiz, datos), /1\.0\.0 → 1\.3\.0/);
+    assert.equal(fs.readFileSync(path.join(raiz, 'VERSION'), 'utf8').trim(), '1.3.0');
+    assert.ok(!fs.existsSync(path.join(raiz, 'viejo.txt')));                       // lo que ya no existe se quita
+    assert.equal(fs.readFileSync(path.join(datos, 'inventario.sqlite'), 'utf8'), 'MIS DATOS');
+    if (process.platform !== 'win32') assert.ok(fs.statSync(path.join(raiz, 'iniciar.command')).mode & 0o100);
+    assert.equal(ACT.versionDe(ACT.rutas(datos).previa), '1.0.0');
+    assert.equal(ACT.confirmar(datos), true); assert.equal(ACT.leerEstado(datos).estado, 'confirmada');
+    /* Regresar a la anterior */
+    ACT.escribirJSON(ACT.rutas(datos).orden, { accion: 'revertir' });
+    ACT.cumplirOrden(raiz, datos);
+    assert.equal(fs.readFileSync(path.join(raiz, 'VERSION'), 'utf8').trim(), '1.0.0');
+    assert.ok(fs.existsSync(path.join(raiz, 'viejo.txt')));
+    fs.rmSync(raiz, { recursive: true, force: true });
+  });
+
+  test('si la versión nueva no arranca, regresa sola a la anterior', () => {
+    const raiz = tmp(), datos = path.join(raiz, 'datos');
+    for (const [n, c] of versionFalsa('1.0.0')) { fs.mkdirSync(path.dirname(path.join(raiz, n)), { recursive: true }); fs.writeFileSync(path.join(raiz, n), c); }
+    fs.mkdirSync(datos);
+    Actualizacion.crear({ raiz, datos, version: '1.0.0' }).preparar(armarZip(versionFalsa('1.4.0')));
+    ACT.escribirJSON(ACT.rutas(datos).orden, { accion: 'instalar' }); ACT.cumplirOrden(raiz, datos);
+    assert.equal(ACT.leerEstado(datos).estado, 'probando');
+    assert.match(ACT.revertirSiFallo(raiz, datos), /no arrancó/);
+    assert.equal(fs.readFileSync(path.join(raiz, 'VERSION'), 'utf8').trim(), '1.0.0');
+    assert.equal(ACT.revertirSiFallo(raiz, datos), null);                         // solo una vez
+    fs.rmSync(raiz, { recursive: true, force: true });
+  });
+});
+
+describe('Fotos de productos', () => {
+  test('acepta fotos reales, rechaza lo que no es imagen y reemplaza la anterior', () => {
+    const { B, pid } = base(), dir = tmp(), F = Fotos.crear({ B, datos: dir });
+    const jpg = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(100)]);
+    assert.throws(() => F.guardar(pid, Buffer.from('<script>no soy foto</script>')), /no es una foto/);
+    const a = F.guardar(pid, jpg); assert.ok(F.ruta(a));
+    const b = F.guardar(pid, jpg); assert.ok(F.ruta(b)); assert.equal(F.ruta(a), null);   // la vieja se borra
+    assert.equal(F.ruta('../../etc/passwd'), null);
+    assert.equal(C.listarProductos(B)[0].foto, b);
+    F.quitar(pid); assert.equal(C.listarProductos(B)[0].foto, null);
+    fs.rmSync(dir, { recursive: true, force: true });
   });
 });

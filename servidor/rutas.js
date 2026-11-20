@@ -23,19 +23,20 @@ const Red = require('./lib/red.js');
  * ctx = { B, cfg, auth, tc, eventos, respaldos, version }
  */
 function registrar(ctx) {
-  const { B, cfg, auth, tc, eventos, respaldos } = ctx;
+  const { B, cfg, auth, tc, eventos, respaldos, fotos, actualizacion } = ctx;
   const r = H.enrutador();
   const fecha = (v, porOmision) => v ? (T.esFecha(v) ? v : U.falla('La fecha no es válida.')) : porOmision;
   const esDueno = s => s.usuario.rol === 'dueno';
-  /* Avisa a todos que algo cambió (cada pantalla decide si recarga) */
-  const cambio = (que, extra = {}) => eventos.emitir('cambio', { que, t: Date.now(), ...extra });
+  /* Avisa a todos que algo cambió (cada pantalla decide si recarga). Los detalles (montos, quién vendió)
+     solo le llegan al dueño; a los vendedores solo «qué cambió». */
+  const cambio = (que, extra = {}) => { const t = Date.now(); eventos.emitir('cambio', { que, t, ...extra }, 'dueno'); eventos.emitir('cambio', { que, t }, 'vendedor'); };
 
   /* Para un vendedor se ocultan costos y márgenes */
   const sinCostos = p => ({ ...p, costoUsd: undefined, costoMxn: undefined, costoReposicion: undefined, margen: undefined, margenReposicion: undefined, valorUsd: undefined, valorMxn: undefined,
     variantes: p.variantes.map(v => ({ ...v, costoUsd: undefined, costoMxn: undefined })) });
 
   /* ═══════════════ públicas ═══════════════ */
-  r.get('/api/salud', () => ({ version: ctx.version, hora: T.partes().hora }), { publica: true });
+  r.get('/api/salud', () => ({ version: ctx.version, hora: T.partes().hora, instalado: auth.estado() === 'listo' }), { publica: true });
 
   r.get('/api/estado', (req) => {
     const e = auth.estado(), aj = A.leer(B);
@@ -43,7 +44,7 @@ function registrar(ctx) {
   }, { publica: true });
 
   r.post('/api/instalar', (req, res, s, d) => {
-    auth.instalar(d, H.esLocal(req));
+    auth.instalar(d, H.esLocal(req));            // solo desde la computadora de la tienda
     const u = B.uno("SELECT id FROM usuarios WHERE rol = 'dueno' AND activo = 1 ORDER BY id LIMIT 1");
     const ses = auth.entrar({ usuarioId: u.id, pin: d.pin }, H.ip(req), req.headers['user-agent']);
     H.ponerCookie(res, auth.COOKIE, ses.token, cfg.sesionDias * 86400);
@@ -83,7 +84,21 @@ function registrar(ctx) {
     const productos = C.listarProductos(B, { inactivos: q.get('inactivos') === '1' && esDueno(s), tcHoy: a.compra || a.valor });
     return { categorias: C.listarCategorias(B), productos: esDueno(s) ? productos : productos.map(sinCostos) };
   });
-  r.get('/api/productos/:id', (req, res, s, d, q, p) => { const a = tc.actual(); const x = C.detalleProducto(B, p.id, a.compra || a.valor); return { producto: esDueno(s) ? x : { ...sinCostos(x), lotes: [] } }; });
+  r.get('/api/productos/:id', (req, res, s, d, q, p) => {
+    const a = tc.actual(); const x = C.detalleProducto(B, p.id, a.compra || a.valor);
+    if (esDueno(s)) return { producto: x };
+    /* Vendedor: sin lotes, sin costos y sin el valor de merma o entradas (que es costo) */
+    return { producto: { ...sinCostos(x), lotes: [], movimientos: x.movimientos.map(m => ({ ...m, importe: m.tipo === 'venta' ? m.importe : null })) } };
+  });
+  /* Fotos: el dueño las sube desde el celular (cámara o galería); todos con sesión las ven */
+  r.post('/api/productos/:id/foto', (req, res, s, d, q, p) => { const foto = fotos.guardar(+p.id, d); B.anotar(s.usuario.id, 'foto de producto', { id: +p.id }); cambio('catalogo'); return { foto }; }, { rol: 'dueno', binario: 6 * 1024 * 1024 });
+  r.delete('/api/productos/:id/foto', (req, res, s, d, q, p) => { fotos.quitar(+p.id); cambio('catalogo'); return {}; }, { rol: 'dueno' });
+  r.get('/api/fotos/:archivo', (req, res, s, d, q, p) => {
+    const ruta = fotos.ruta(p.archivo); if (!ruta) U.falla('No se encontró la foto.', 404);
+    const ext = p.archivo.split('.').pop();
+    H.enviar(req, res, 200, fs.readFileSync(ruta), { jpg: 'image/jpeg', png: 'image/png', webp: 'image/webp' }[ext], { 'Cache-Control': 'private, max-age=31536000, immutable' });
+    return H.SIN_RESPUESTA;
+  });
   r.post('/api/productos', (req, res, s, d) => { const id = C.guardarProducto(B, d); B.anotar(s.usuario.id, 'producto creado', { id, nombre: d.nombre }); cambio('catalogo'); return { id }; }, { rol: 'dueno' });
   r.put('/api/productos/:id', (req, res, s, d, q, p) => { C.guardarProducto(B, { ...d, id: +p.id }); cambio('catalogo'); return { id: +p.id }; }, { rol: 'dueno' });
   r.post('/api/productos/:id/activo', (req, res, s, d, q, p) => { C.activarProducto(B, +p.id, !!d.activo); cambio('catalogo'); return {}; }, { rol: 'dueno' });
@@ -183,6 +198,23 @@ function registrar(ctx) {
     const ruta = respaldos.ruta(p.nombre); if (!ruta) U.falla('No se encontró el respaldo.', 404);
     H.enviar(req, res, 200, fs.readFileSync(ruta), 'application/vnd.sqlite3', { 'Content-Disposition': `attachment; filename="${p.nombre}"`, 'Cache-Control': 'no-store' });
     return H.SIN_RESPUESTA;
+  }, { rol: 'dueno' });
+  /* Actualizar el sistema arrastrando el .zip de la versión nueva */
+  r.get('/api/actualizacion', () => ({ actualizacion: actualizacion.estado() }), { rol: 'dueno' });
+  r.post('/api/actualizacion/subir', (req, res, s, d) => {
+    const info = actualizacion.preparar(d);
+    B.anotar(s.usuario.id, 'actualización subida', { version: info.version });
+    return { pendiente: info };
+  }, { rol: 'dueno', binario: 60 * 1024 * 1024 });
+  r.delete('/api/actualizacion/pendiente', () => { actualizacion.descartar(); return {}; }, { rol: 'dueno' });
+  r.post('/api/actualizacion/:accion', (req, res, s, d, q, p) => {
+    if (!['instalar', 'revertir'].includes(p.accion)) U.falla('Acción no válida.', 404);
+    respaldos.ahora('antes-de-actualizar');             // por si acaso: copia de la base antes de cambiar de versión
+    actualizacion.ordenar(p.accion);
+    B.anotar(s.usuario.id, p.accion === 'instalar' ? 'actualización instalada' : 'regreso a versión anterior');
+    eventos.emitir('actualizando', { accion: p.accion });
+    res.on('finish', ctx.salirParaActualizar);
+    return { reiniciando: true };
   }, { rol: 'dueno' });
   r.get('/api/bitacora', () => ({ bitacora: B.todos('SELECT b.*, u.nombre usuario FROM bitacora b LEFT JOIN usuarios u ON u.id = b.usuario_id ORDER BY b.id DESC LIMIT 200') }), { rol: 'dueno' });
 

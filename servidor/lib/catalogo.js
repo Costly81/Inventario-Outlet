@@ -73,7 +73,7 @@ function listarProductos(B, { inactivos = false, tcHoy = null } = {}) {
     const porDia = vendidas30 / 30;
     const reposicion = tcHoy ? costoUsd * tcHoy : null;
     return {
-      id: p.id, nombre: p.nombre, categoriaId: p.categoria_id, categoria: p.categoria, emoji: p.emoji || p.cat_emoji || '🏷️', color: p.color || p.cat_color || '#38bdf8',
+      id: p.id, nombre: p.nombre, foto: p.foto || null, categoriaId: p.categoria_id, categoria: p.categoria, emoji: p.emoji || p.cat_emoji || '🏷️', color: p.color || p.cat_color || '#38bdf8',
       precio: p.precio, minimo: p.minimo, notas: p.notas, activo: !!p.activo, variantes,
       existencia: n, valorUsd: U.r2(usd), valorMxn: U.r2(mxn), valorVenta: U.r2(variantes.reduce((s, v) => s + v.existencia * v.precio, 0)),
       costoUsd: U.r2(costoUsd), costoMxn: U.r2(costoMxn), costoReposicion: reposicion == null ? null : U.r2(reposicion),

@@ -40,6 +40,39 @@ export async function api(ruta, { metodo = 'GET', datos } = {}) {
 }
 function marcarConexion(si) { if (estado.enLinea !== si) { estado.enLinea = si; avisar('conexion', si); } }
 
+/**
+ * Sube un archivo tal cual (foto o .zip). subirArchivo('/api/productos/3/foto', blob, 'image/jpeg', avance => …)
+ * Usa XMLHttpRequest para poder mostrar el avance de la subida.
+ */
+export function subirArchivo(ruta, blob, tipo, alAvanzar) {
+  return new Promise((ok, mal) => {
+    const x = new XMLHttpRequest();
+    x.open('POST', ruta); x.withCredentials = true;
+    x.setRequestHeader('Content-Type', tipo || 'application/octet-stream');
+    if (estado.sesion) x.setRequestHeader('X-CSRF', estado.sesion.csrf);
+    if (alAvanzar) x.upload.onprogress = e => { if (e.lengthComputable) alAvanzar(e.loaded / e.total); };
+    x.onload = () => { let j = null; try { j = JSON.parse(x.responseText); } catch (_) { } if (x.status === 401) avisar('sesion-terminada'); if (x.status >= 200 && x.status < 300 && j && j.ok) ok(j); else mal(new ErrorApi((j && j.error) || `Error ${x.status}`, x.status)); };
+    x.onerror = () => mal(new ErrorApi('Sin conexión con la computadora de la tienda.', 0));
+    x.send(blob);
+  });
+}
+
+/**
+ * Achica una foto del celular antes de subirla (≈900 px, JPEG): así sube rápido por Wi-Fi y no llena el disco.
+ * Respeta la orientación de la cámara (fotos «acostadas» del iPhone).
+ */
+export async function achicarFoto(archivo, lado = 900, calidad = 0.82) {
+  let img;
+  try { img = await createImageBitmap(archivo, { imageOrientation: 'from-image' }); }
+  catch (_) { img = await new Promise((ok, mal) => { const i = new Image(); i.onload = () => ok(i); i.onerror = () => mal(new Error('No se pudo leer la foto.')); i.src = URL.createObjectURL(archivo); }); }
+  const w = img.width, h = img.height, f = Math.min(1, lado / Math.max(w, h));
+  const lienzo = document.createElement('canvas'); lienzo.width = Math.round(w * f); lienzo.height = Math.round(h * f);
+  lienzo.getContext('2d').drawImage(img, 0, 0, lienzo.width, lienzo.height);
+  return new Promise((ok, mal) => lienzo.toBlob(b => b ? ok(b) : mal(new Error('No se pudo preparar la foto.')), 'image/jpeg', calidad));
+}
+/** Dirección de la foto de un producto (o null) */
+export const fotoDe = p => p && p.foto ? '/api/fotos/' + encodeURIComponent(p.foto) : null;
+
 /* ═════════ Avisos en vivo (Server-Sent Events) ═════════ */
 let fuente = null;
 export function conectarEventos() {
@@ -47,6 +80,7 @@ export function conectarEventos() {
   fuente = new EventSource('/api/eventos');
   fuente.addEventListener('tc', e => { estado.tc = JSON.parse(e.data); avisar('tc', estado.tc); });
   fuente.addEventListener('cambio', e => { const d = JSON.parse(e.data); avisar('cambio', d); });
+  fuente.addEventListener('actualizando', e => avisar('actualizando', JSON.parse(e.data)));
   fuente.onopen = () => marcarConexion(true);
   fuente.onerror = () => { /* el navegador reintenta solo (retry: 4000) */ };
 }

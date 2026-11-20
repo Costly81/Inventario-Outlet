@@ -5,8 +5,11 @@
      cuánto se reciben dólares de los clientes.
    · Precios: margen objetivo, redondeo de precios sugeridos y mínimo de piezas para avisar.
    · Personas (vendedores con su PIN), categorías, abrir en el celular (QR), respaldos y Excel.
+   · Actualizar el sistema: arrastrar (o elegir en el celular) el .zip de una versión nueva.
+     El sistema guarda una copia de la versión actual y, si la nueva no arranca, regresa solo.
    ───────────────────────────────────────────────────────────────────────────── */
-import { estado, api, avisar, cargarCatalogo, esc, mxn, tcFmt, fechaCorta, iniciales, NOMBRES } from '../nucleo.js';
+import { estado, api, avisar, cargarCatalogo, esc, mxn, tcFmt, fechaCorta, iniciales, NOMBRES, subirArchivo } from '../nucleo.js';
+import { pantallaActualizando } from '../app.js';
 import { ico } from '../iconos.js';
 import { aviso, avisoError, hoja, al, confirmar, esqueletos } from '../ui.js';
 
@@ -38,6 +41,8 @@ function pintar() {
       <button class="btn btn-suave">Guardar</button>
     </form>
   </div>
+
+  <section class="tarjeta" style="margin-top:16px" data-actualizar>${esqueletos(1, 120)}</section>
 
   <form class="tarjeta formulario" data-dolar style="margin-top:16px"><h3>${ico('dolar', 'width="18" height="18" style="display:inline;vertical-align:-3px"')} Dólar</h3>
     <div class="rejilla r-3">
@@ -97,7 +102,7 @@ function pintar() {
   al(raiz, 'click', '[data-persona]', b => persona(b.dataset.persona ? JSON.parse(b.dataset.persona) : null));
   al(raiz, 'click', '[data-categoria]', b => categoria(b.dataset.categoria ? JSON.parse(b.dataset.categoria) : null));
   al(raiz, 'click', '[data-respaldar]', async () => { try { const j = await api('/api/respaldos', { metodo: 'POST' }); aviso('Respaldo creado: ' + j.nombre); cargarRespaldos(); } catch (e) { avisoError(e); } });
-  cargarPersonas(); cargarCategorias(); cargarRespaldos();
+  cargarPersonas(); cargarCategorias(); cargarRespaldos(); cargarActualizacion();
 }
 
 async function cargarPersonas() {
@@ -160,4 +165,62 @@ async function cargarRespaldos() {
     const { respaldos } = await api('/api/respaldos');
     caja.innerHTML = respaldos.slice(0, 6).map(r => `<a class="fila-lista" href="/api/respaldos/${encodeURIComponent(r.nombre)}" download style="padding:8px"><span class="ico" style="width:40px;height:40px">${ico('respaldo')}</span><span style="min-width:0"><div class="titulo" style="font-size:var(--t-sm)">${esc(r.nombre)}</div><div class="detalle">${(r.bytes / 1024).toFixed(0)} KB${r.manual ? ' · manual' : ' · automático'}</div></span>${ico('descargar', 'width="18" height="18" style="color:var(--tinta-3)"')}</a>`).join('') || '<p class="tenue">Todavía no hay respaldos.</p>';
   } catch (e) { avisoError(e); }
+}
+
+/* ═════════ Actualizar el sistema ═════════ */
+/* Convierte la sección del CHANGELOG (markdown sencillo) en una lista legible */
+function novedadesHTML(md) {
+  const lineas = String(md || '').split('\n').filter(l => l.trim());
+  if (!lineas.length) return '<p class="tenue" style="margin:0">Esta versión no trae notas.</p>';
+  const fmt = t => esc(t).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/`(.+?)`/g, '<code>$1</code>');
+  return '<ul>' + lineas.map(l => `<li>${fmt(l.replace(/^[-*]\s*/, ''))}</li>`).join('') + '</ul>';
+}
+async function cargarActualizacion() {
+  const caja = raiz.querySelector('[data-actualizar]'); if (!caja) return;
+  let a; try { a = (await api('/api/actualizacion')).actualizacion; } catch (e) { caja.innerHTML = ''; return avisoError(e); }
+  const u = a.ultimo || {};
+  const avisoUltimo = u.estado === 'revertida' ? `<div class="nota aviso" style="margin-bottom:12px">${ico('alerta')}<span>${esc(u.mensaje || '')} Se regresó sola a la versión ${esc(u.hacia || '')}. Revise el registro (opción 4 de la ventana del sistema).</span></div>`
+    : u.estado === 'fallo' ? `<div class="nota mal" style="margin-bottom:12px">${ico('alerta')}<span>La última actualización no se pudo aplicar: ${esc(u.mensaje || '')}</span></div>` : '';
+  caja.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">
+      <div><h3>${ico('cohete', 'width="18" height="18" style="display:inline;vertical-align:-3px"')} Actualizar el sistema</h3><p class="sec" style="margin:2px 0 12px;font-size:var(--t-sm)">Versión instalada: <b>${esc(a.version)}</b>. Descargue el <code>inventario-outlet-vX.Y.Z.zip</code> de la Release en GitHub y súbalo aquí: no hace falta entrar a la computadora de la tienda.</p></div>
+      ${a.previa ? `<button class="btn btn-borde btn-chico" data-revertir>${ico('deshacer')} Volver a la ${esc(a.previa)}</button>` : ''}</div>
+    ${avisoUltimo}
+    ${!a.puede ? `<div class="nota aviso">${ico('info')}<span>Para actualizar desde aquí, el sistema debe estar encendido con <b>iniciar.command</b> (Mac) o <b>iniciar.bat</b> (Windows).</span></div>`
+    : a.pendiente ? `<div class="dolar-heroe" style="padding:18px;background:linear-gradient(160deg,#f0fbff,#fff)"><div class="sec" style="font-weight:700">Lista para instalar</div>
+        <div class="cifra" style="font-size:var(--t-2xl)">Versión ${esc(a.pendiente.version)}</div><p class="sec" style="margin:4px 0 12px">Ahora tiene la ${esc(a.pendiente.actual)}. Esto trae:</p>
+        <div class="novedades">${novedadesHTML(a.pendiente.novedades)}</div>
+        <p class="tenue" style="font-size:var(--t-xs);margin:10px 0 0">Al instalar se hace un respaldo de la base de datos y una copia de la versión actual. El sistema se reinicia (unos segundos) y quien esté vendiendo verá «Actualizando…»; las ventas no se pierden.</p>
+        <div class="grupo-botones" style="margin-top:14px"><button class="btn btn-borde" data-descartar>Descartar</button><button class="btn btn-primario" data-instalar>${ico('cohete')} Instalar versión ${esc(a.pendiente.version)}</button></div></div>`
+    : `<label class="zona-zip" data-zona>${ico('descargar')}<b>Arrastre aquí el .zip de la versión nueva</b><span>o toque para elegirlo (también desde el celular)</span><input type="file" accept=".zip,application/zip" data-zip hidden></label>
+       <div class="barra-avance oculto" data-avance style="margin-top:12px"><i></i></div>`}
+    ${a.historial.length ? `<details style="margin-top:14px"><summary class="sec" style="cursor:pointer;font-weight:700;font-size:var(--t-sm)">Historial de actualizaciones</summary><div class="lista" style="margin-top:8px">${a.historial.map(x => `<div class="fila-lista" style="padding:8px;grid-template-columns:36px 1fr"><span class="ico" style="width:36px;height:36px;--c:${x.resultado === 'confirmada' ? '#0f9d6e' : '#e0484f'}">${ico(x.resultado === 'confirmada' ? 'palomita' : 'alerta')}</span><span><div class="titulo" style="font-size:var(--t-sm);white-space:normal">${esc(x.texto || x.resultado)}</div><div class="detalle">${new Date(x.fecha).toLocaleString('es-MX')}</div></span></div>`).join('')}</div></details>` : ''}`;
+
+  const zona = caja.querySelector('[data-zona]');
+  if (zona) {
+    const subir = async archivo => {
+      if (!archivo) return;
+      if (!/\.zip$/i.test(archivo.name)) return aviso('Elija el archivo .zip de la versión (inventario-outlet-vX.Y.Z.zip).', { tipo: 'mal' });
+      const barra = caja.querySelector('[data-avance]'); barra.classList.remove('oculto');
+      zona.querySelector('b').textContent = `Subiendo ${archivo.name}…`;
+      try { await subirArchivo('/api/actualizacion/subir', archivo, 'application/zip', f => { barra.firstElementChild.style.width = Math.round(f * 100) + '%'; }); aviso('Versión revisada: lista para instalar'); }
+      catch (e) { avisoError(e); }
+      cargarActualizacion();
+    };
+    caja.querySelector('[data-zip]').onchange = e => subir(e.target.files[0]);
+    zona.addEventListener('dragover', e => { e.preventDefault(); zona.classList.add('encima'); });
+    zona.addEventListener('dragleave', () => zona.classList.remove('encima'));
+    zona.addEventListener('drop', e => { e.preventDefault(); zona.classList.remove('encima'); subir(e.dataTransfer.files[0]); });
+  }
+  const instalar = caja.querySelector('[data-instalar]');
+  if (instalar) instalar.onclick = async () => {
+    if (!await confirmar({ titulo: `¿Instalar la versión ${a.pendiente.version}?`, texto: 'El sistema se reinicia y vuelve en unos segundos. Si la versión nueva no arranca, regresa sola a la actual.', si: 'Instalar' })) return;
+    try { await api('/api/actualizacion/instalar', { metodo: 'POST' }); pantallaActualizando('instalar'); } catch (e) { avisoError(e); }
+  };
+  const descartar = caja.querySelector('[data-descartar]');
+  if (descartar) descartar.onclick = async () => { try { await api('/api/actualizacion/pendiente', { metodo: 'DELETE' }); cargarActualizacion(); } catch (e) { avisoError(e); } };
+  const revertir = caja.querySelector('[data-revertir]');
+  if (revertir) revertir.onclick = async () => {
+    if (!await confirmar({ titulo: `¿Volver a la versión ${a.previa}?`, texto: 'Se usa si la versión nueva tiene algún problema. Sus ventas, inventario y compras no se tocan.', si: 'Volver a la anterior', peligro: true })) return;
+    try { await api('/api/actualizacion/revertir', { metodo: 'POST' }); pantallaActualizando('revertir'); } catch (e) { avisoError(e); }
+  };
 }

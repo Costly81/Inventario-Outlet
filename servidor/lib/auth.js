@@ -4,8 +4,9 @@
 
    · Cada persona entra con su nombre y un PIN de 4 a 6 dígitos (cómodo en el celular).
    · Dos papeles: «dueño» (todo) y «vendedor» (vender, devolver, ver existencias y el dólar).
-   · La primera vez no hay nadie: se crea el dueño con el CÓDIGO DE INSTALACIÓN que muestra el
-     menú de arranque (también queda en datos/INSTALACION.txt). Desde la propia Mac no se pide código.
+   · La primera vez no hay nadie: el PIN del dueño se crea DESDE LA COMPUTADORA DE LA TIENDA
+     (http://localhost:4300). Lo mismo si el dueño olvida su PIN (opción del menú de arranque).
+     Los celulares no pueden hacerlo: entran con el código QR y el PIN de cada quien.
    · La sesión es una cookie HttpOnly; las operaciones que cambian algo exigen además el
      encabezado X-CSRF (protege contra páginas ajenas que intenten enviar formularios).
    · Si alguien se equivoca de PIN muchas veces seguidas, esa conexión espera unos minutos.
@@ -27,39 +28,22 @@ function pinCorrecto(pin, guardado) {
 }
 const validarPin = pin => { const s = String(pin ?? ''); if (!/^\d{4,6}$/.test(s)) U.falla('El PIN debe tener de 4 a 6 números.'); if (/^(\d)\1+$/.test(s)) U.falla('Elija un PIN que no sea el mismo número repetido.'); return s; };
 
-/* ---- código de instalación (o de restablecer el PIN) ---- */
-const ALFABETO = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-function nuevoCodigo() { const b = crypto.randomBytes(12); let s = ''; for (let i = 0; i < 12; i++) { s += ALFABETO[b[i] % ALFABETO.length]; if (i === 3 || i === 7) s += '-'; } return s; }
-function escribirArchivoCodigo(datos, codigo, motivo) {
-  fs.writeFileSync(path.join(datos, 'INSTALACION.txt'),
-    `INVENTARIO OUTLET · ${motivo}\n\nCódigo: ${codigo}\n\nAbra el sistema en el navegador y escríbalo donde lo pide para crear el PIN del dueño.\n` +
-    `Desde la propia Mac (http://localhost) no se pide código. Este archivo se borra solo cuando ya se usó.\n`);
-}
-
 function crear({ B, datos, sesionDias = 30 }) {
   /** Estado de la instalación: 'listo' | 'instalar' (sin usuarios) | 'restablecer' (se pidió un PIN nuevo) */
   function estado() {
     if (B.meta('restablecer') === '1') return 'restablecer';
     return B.valor('SELECT COUNT(*) FROM usuarios WHERE activo = 1') > 0 ? 'listo' : 'instalar';
   }
-  /* Asegura que exista el código cuando hace falta (lo llama el servidor al arrancar) */
-  function prepararCodigo() {
-    const e = estado();
-    if (e === 'listo') { try { fs.rmSync(path.join(datos, 'INSTALACION.txt'), { force: true }); } catch (_) { } return null; }
-    let c = B.meta('codigoInstalacion');
-    if (!c) { c = nuevoCodigo(); B.guardarMeta('codigoInstalacion', c); }
-    escribirArchivoCodigo(datos, c, e === 'instalar' ? 'PRIMER USO' : 'RESTABLECER PIN');
-    return c;
+  /* Limpieza de versiones anteriores (1.0 y 1.1 usaban un código de instalación) */
+  function limpiarCodigo() {
+    try { fs.rmSync(path.join(datos, 'INSTALACION.txt'), { force: true }); } catch (_) { }
+    B.run("DELETE FROM meta WHERE clave = 'codigoInstalacion'");
   }
 
-  /** Primer uso o PIN olvidado: crea (o actualiza) al dueño. local = la petición viene de la misma Mac. */
-  function instalar({ codigo, nombre, pin }, local) {
+  /** Primer uso o PIN olvidado: crea (o actualiza) al dueño. Solo desde la computadora de la tienda (local). */
+  function instalar({ nombre, pin }, local) {
     const e = estado(); if (e === 'listo') U.falla('El sistema ya está configurado.', 409);
-    const guardado = B.meta('codigoInstalacion');
-    if (!local) {
-      const limpio = String(codigo || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-      if (!guardado || limpio !== guardado.replace(/-/g, '')) U.falla('El código no coincide. Está en la ventana del menú de arranque (o en datos/INSTALACION.txt).', 403);
-    }
+    if (!local) U.falla('Por seguridad, el PIN del dueño se crea desde la computadora de la tienda: abra el sistema en ella (opción 1 del menú).', 403);
     pin = validarPin(pin);
     const ahora = new Date().toISOString();
     return B.tx(() => {
@@ -75,18 +59,15 @@ function crear({ B, datos, sesionDias = 30 }) {
       }
       B.run("DELETE FROM meta WHERE clave IN ('codigoInstalacion', 'restablecer')");
       B.anotar(id, e === 'instalar' ? 'instalación' : 'PIN restablecido');
-      try { fs.rmSync(path.join(datos, 'INSTALACION.txt'), { force: true }); } catch (_) { }
       return id;
     });
   }
 
-  /** Desde el menú de arranque: el dueño olvidó su PIN */
+  /** Desde el menú de arranque: el dueño olvidó su PIN. Se cierran todas las sesiones y el PIN nuevo se crea en la computadora. */
   function pedirRestablecer() {
     B.guardarMeta('restablecer', '1');
-    const c = nuevoCodigo(); B.guardarMeta('codigoInstalacion', c);
-    escribirArchivoCodigo(datos, c, 'RESTABLECER PIN');
+    B.run('DELETE FROM sesiones');
     B.anotar(null, 'restablecer PIN solicitado');
-    return c;
   }
 
   /* ---- intentos fallidos ---- */
@@ -159,7 +140,7 @@ function crear({ B, datos, sesionDias = 30 }) {
   /* Limpieza periódica */
   const podar = () => { B.run('DELETE FROM sesiones WHERE expira < ?', Date.now()); B.run('DELETE FROM intentos WHERE t < ?', Date.now() - VENTANA_MS); };
 
-  return { COOKIE, estado, prepararCodigo, instalar, pedirRestablecer, entrar, sesion, salir, listarParaEntrada, listar, guardarUsuario, cambiarPin, podar };
+  return { COOKIE, estado, limpiarCodigo, instalar, pedirRestablecer, entrar, sesion, salir, listarParaEntrada, listar, guardarUsuario, cambiarPin, podar };
 }
 
 module.exports = { crear, huellaPin, pinCorrecto, COLORES };

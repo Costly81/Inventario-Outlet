@@ -117,6 +117,9 @@ const MIGRACIONES = [
   CREATE TABLE tc_dias (fecha TEXT PRIMARY KEY, apertura REAL NOT NULL, cierre REAL NOT NULL, minimo REAL NOT NULL, maximo REAL NOT NULL, muestras INTEGER NOT NULL, fuente TEXT);
 
   CREATE TABLE bitacora (id INTEGER PRIMARY KEY AUTOINCREMENT, t TEXT NOT NULL, usuario_id INTEGER, evento TEXT NOT NULL, detalle TEXT);
+  `,
+  /* 2 · versión 1.2.0: foto de cada producto (nombre del archivo en datos/fotos/) */ `
+  ALTER TABLE productos ADD COLUMN foto TEXT;
   `
 ];
 

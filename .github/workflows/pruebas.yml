@@ -34,6 +34,20 @@ jobs:
           grep -q $'\r' iniciar.bat && grep -q $'\r' encender.bat   # los .bat deben conservar CRLF
       - name: Pruebas del servidor
         run: npm run probar
+      - name: Ventana del sistema (cerrar la ventana apaga todo)
+        env:
+          IO_DATOS: ${{ runner.temp }}/io-ventana
+          IO_PUERTO: '4311'
+          IO_SIN_RED: '1'
+        run: |
+          (sleep 60 | node arranque/menu.js > "$RUNNER_TEMP/ventana.txt" 2>&1 &)
+          for i in $(seq 1 30); do sleep 1; node arranque/menu.js estado && break; done
+          node arranque/menu.js estado
+          kill -HUP "$(pgrep -f 'node arranque/menu.js$' | head -1)"
+          sleep 6
+          ! node arranque/menu.js estado
+          ! pgrep -f 'lanzador.js|servidor/index.js'
+          cat "$IO_DATOS/sistema.log"
 
   sistemas:
     name: ${{ matrix.os == 'windows-latest' && 'Windows' || 'macOS' }}

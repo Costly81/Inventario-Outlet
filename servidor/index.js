@@ -10,9 +10,8 @@
    Normalmente lo arranca y vigila arranque/lanzador.js (el menú de iniciar.command lo hace por usted).
    Uso directo:
      node servidor/index.js                    arrancar
-     node servidor/index.js --restablecer-pin  el dueño olvidó su PIN: genera un código para crear uno nuevo
+     node servidor/index.js --restablecer-pin  el dueño olvidó su PIN: el nuevo se crea desde esta computadora
      node servidor/index.js --respaldo         hace un respaldo y termina
-     node servidor/index.js --codigo           muestra el código de instalación (si hace falta)
      node servidor/index.js --demo             si la base está vacía, la llena con datos de demostración
    ───────────────────────────────────────────────────────────────────────────── */
 const http = require('http'), path = require('path');
@@ -27,6 +26,8 @@ const TC = require('./lib/tipoCambio.js');
 const Eventos = require('./lib/eventos.js');
 const Respaldo = require('./lib/respaldo.js');
 const Red = require('./lib/red.js');
+const Fotos = require('./lib/fotos.js');
+const Actualizacion = require('./lib/actualizacion.js');
 const Rutas = require('./rutas.js');
 
 /**
@@ -41,7 +42,12 @@ function preparar({ cfg = CFG.leer(), fetch, registro = console } = {}) {
   const auth = Auth.crear({ B, datos: cfg.datos, sesionDias: cfg.sesionDias });
   const tc = TC.crear({ B, emitir: eventos.emitir, sinRed: cfg.sinRed, fetch, registro });
   const respaldos = Respaldo.crear({ B, datos: cfg.datos, conservar: cfg.respaldosDiarios, registro });
-  const ctx = { B, cfg, auth, tc, eventos, respaldos, version: CFG.version() };
+  const fotos = Fotos.crear({ B, datos: cfg.datos });
+  const version = CFG.version();
+  const actualizacion = Actualizacion.crear({ raiz: cfg.raiz, datos: cfg.datos, version });
+  /* El servidor se detiene con el código 75 para que el lanzador aplique una actualización */
+  const salirParaActualizar = () => { registro.log('  · Se detiene para que el lanzador aplique la actualización…'); setTimeout(() => process.exit(75), 600); };
+  const ctx = { B, cfg, auth, tc, eventos, respaldos, fotos, actualizacion, salirParaActualizar, version };
   const rutas = Rutas.registrar(ctx);
   const publico = path.join(cfg.raiz, 'publico');
 
@@ -66,7 +72,8 @@ function preparar({ cfg = CFG.leer(), fetch, registro = console } = {}) {
         if (req.method !== 'GET' && req.method !== 'HEAD' && !r.opciones.sinCsrf && req.headers['x-csrf'] !== sesion.csrf)
           return H.error(req, res, 403, 'La página está desactualizada. Recárguela e intente de nuevo.');
       }
-      const cuerpo = (req.method === 'POST' || req.method === 'PUT') ? await H.leerJSON(req) : {};
+      /* Cuerpo: JSON normalmente; archivo tal cual en las rutas marcadas { binario: bytes máximos } (fotos, .zip) */
+      const cuerpo = r.opciones.binario ? await H.leerBinario(req, r.opciones.binario) : (req.method === 'POST' || req.method === 'PUT') ? await H.leerJSON(req) : {};
       const salida = await r.fn(req, res, sesion, cuerpo, url.searchParams, r.params);
       if (salida === H.SIN_RESPUESTA) return;
       return H.json(req, res, 200, { ok: true, ...(salida || {}) });
@@ -91,7 +98,7 @@ async function iniciar() {
     console.log(n ? `  ✓ Datos de demostración cargados (${n} ventas).` : '  · La base ya tenía datos: no se cargó la demostración.');
   }
 
-  const codigo = auth.prepararCodigo();
+  auth.limpiarCodigo();
   const servidor = http.createServer((req, res) => { app.atender(req, res).catch(e => { console.error(e); try { H.error(req, res, 500, 'Error inesperado.'); } catch (_) { } }); });
   servidor.keepAliveTimeout = 65000;
   servidor.requestTimeout = 60000;
@@ -103,10 +110,12 @@ async function iniciar() {
     servidor.listen(cfg.puerto, cfg.host, ok);
   });
 
+  /* Si se acaba de instalar una versión, ya arrancó bien: deja de estar «a prueba» */
+  if (app.actualizacion.confirmar()) console.log(`  ✓ Versión ${app.version} confirmada.`);
   console.log(`\n  ✓ Inventario Outlet ${app.version} encendido · ${T.zona()} · ${T.partes().fecha} ${T.partes().hora}`);
   console.log(`    En esta computadora: http://localhost:${cfg.puerto}`);
   for (const u of Red.urls(cfg.puerto).slice(0, 3)) console.log(`    En los celulares: ${u.url}   (${u.interfaz})`);
-  if (codigo) console.log(`\n  PRIMER USO: código para crear el PIN del dueño: ${codigo}  (desde esta computadora no se pide)`);
+  if (auth.estado() !== 'listo') console.log(`\n  PRIMER USO: abra http://localhost:${cfg.puerto} en esta computadora para crear el PIN del dueño.`);
 
   /* Tareas: dólar, respaldo diario, limpieza */
   tc.iniciar().catch(() => { });
@@ -124,6 +133,7 @@ async function iniciar() {
   };
   process.on('SIGTERM', () => apagar('SIGTERM'));
   process.on('SIGINT', () => apagar('Control + C'));
+  process.on('SIGHUP', () => apagar('se cerró la ventana'));
   process.on('message', m => { if (m === 'apagar') apagar('orden del lanzador'); });   // canal interno con arranque/lanzador.js
   process.on('disconnect', () => apagar('el lanzador se cerró'));
 }
@@ -136,20 +146,17 @@ function ordenUnica() {
   const auth = Auth.crear({ B, datos: cfg.datos });
   try {
     if (process.argv.includes('--restablecer-pin')) {
-      const c = auth.pedirRestablecer();
-      console.log(`\n  ✓ Listo. Se cerraron las sesiones abiertas.\n\n  Abra el sistema y escriba este código para crear el PIN nuevo del dueño:\n\n        ${c}\n\n  (Desde la propia Mac no se pide el código. También quedó en datos/INSTALACION.txt)\n`);
+      auth.pedirRestablecer();
+      console.log(`\n  ✓ Listo. Se cerraron las sesiones abiertas.\n\n  Abra el sistema EN ESTA COMPUTADORA (http://localhost:${cfg.puerto}) para crear el PIN nuevo del dueño.\n  Ventas, inventario y compras no se tocaron.\n`);
     } else if (process.argv.includes('--respaldo')) {
       const r = Respaldo.crear({ B, datos: cfg.datos });
       console.log('  ✓ Respaldo creado: datos/respaldos/' + r.ahora());
-    } else if (process.argv.includes('--codigo')) {
-      const c = auth.prepararCodigo();
-      console.log(c ? c : '(no hace falta código: el sistema ya está configurado)');
     }
   } finally { B.cerrar(); }
 }
 
 if (require.main === module) {
-  if (['--restablecer-pin', '--respaldo', '--codigo'].some(x => process.argv.includes(x))) {
+  if (['--restablecer-pin', '--respaldo'].some(x => process.argv.includes(x))) {
     try { ordenUnica(); } catch (e) { console.error('  ✗ ' + e.message); process.exit(1); }
   } else {
     iniciar().catch(e => { console.error('\n  ✗ ' + (e && e.message || e)); process.exit(1); });

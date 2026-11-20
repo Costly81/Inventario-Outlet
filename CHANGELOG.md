@@ -2,6 +2,17 @@
 
 Cada versión nueva cambia el archivo `VERSION`; al subirla a `main`, GitHub Actions corre las pruebas y publica la Release con su ZIP de instalación (ver `docs/documentacion-tecnica.md` → Versiones).
 
+## 1.2.0 · 19 de noviembre de 2026
+
+- **La ventana es el sistema.** Al abrir `iniciar.command` (Mac) o `iniciar.bat` (Windows) el sistema enciende solo y la ventana se **minimiza sola**. Si se **cierra la ventana, se apaga todo** (servidor y base de datos, en orden): ya no queda nada corriendo escondido. El menú sigue ahí (1 abrir, 2 celular con QR, 3 reiniciar, 4 registro, 5 respaldo, 6 restablecer PIN, 7 versión, 8 minimizar, 0 apagar y cerrar). Si quedó encendido en segundo plano por una versión anterior, la ventana lo toma sola. `encender.command` y `encender.bat` siguen funcionando: hacen lo mismo que `iniciar`.
+- **Actualizar desde Ajustes, sin entrar a la computadora.** *Ajustes → Actualizar el sistema*: se arrastra el `.zip` de la Release (o se elige desde el celular), se ve qué trae y se toca **Instalar**. Antes de cambiar se hace un respaldo de la base y una copia de la versión actual; el sistema se reinicia solo, las pantallas abiertas esperan y se recargan, y **si la versión nueva no arranca, regresa sola a la anterior**. Botón **Volver a la versión anterior** e historial de actualizaciones. La carpeta `datos/` nunca se toca.
+- **Fotos de los productos** con la **cámara o la galería** del celular (o un archivo en la PC). Se achican en el celular antes de subirse (rápido por Wi-Fi) y se ven en Vender, al elegir talla, en el carrito y en el inventario, para reconocer la prenda a la primera. Filtro «Sin foto» en Inventario.
+- **Sin códigos para entrar.** Se quitó el código de instalación: el PIN del dueño se crea (o se restablece) solo desde la computadora de la tienda, y los celulares entran con el código QR y el PIN de cada quien.
+- **Permisos revisados.** Quien vende solo puede vender, ver y devolver sus ventas, consultar existencias y precios, y ver el dólar. Ya no recibe en vivo los montos de las ventas de otros ni ve el costo de la merma o las entradas en la ficha de un producto. El dueño ve y controla todo.
+- **Negocio propio:** la licencia y la documentación dejan claro que el sistema es para el uso interno del negocio y no se vende ni se distribuye.
+- Los `.command` y `.bat` se leen completos antes de ejecutarse, para que una actualización que los reemplace no los afecte a la mitad.
+- Pruebas: **27** del servidor (antes 23), con el lector de `.zip`, la actualización completa (instalar, confirmar, regresar sola si falla y volver a la anterior), las fotos y los permisos del vendedor. GitHub Actions las corre en Linux, Windows y macOS.
+
 ## 1.1.0 · 19 de noviembre de 2026
 
 - **También en Windows.** Nuevos `iniciar.bat` (el mismo menú con los mismos números que `iniciar.command`) y `encender.bat` (encender sin menú, para la carpeta de Inicio de Windows). Revisan que Node.js esté instalado y en versión 22.13 o más reciente.

@@ -58,6 +58,16 @@ function leerJSON(req, max = 512 * 1024) {
   });
 }
 
+/* Lee el cuerpo tal cual (fotos y el .zip de una actualización) */
+function leerBinario(req, max) {
+  return new Promise((ok, mal) => {
+    let n = 0, cortado = false; const partes = [];
+    req.on('data', c => { if (cortado) return; n += c.length; if (n > max) { cortado = true; mal(Object.assign(new Error(`El archivo es demasiado grande (máximo ${Math.round(max / 1048576)} MB).`), { status: 413, usuario: true })); } else partes.push(c); });
+    req.on('end', () => { if (!cortado) ok(Buffer.concat(partes)); });
+    req.on('error', mal);
+  });
+}
+
 function cookies(req) {
   const out = {};
   for (const par of String(req.headers.cookie || '').split(';')) { const i = par.indexOf('='); if (i > 0) out[par.slice(0, i).trim()] = decodeURIComponent(par.slice(i + 1).trim()); }
@@ -110,4 +120,4 @@ function csv(filas, columnas) {
   return '﻿' + lineas.join('\r\n') + '\r\n';
 }
 
-module.exports = { SIN_RESPUESTA, TIPOS, esLocal, ip, seguridad, enviar, json, error, leerJSON, cookies, ponerCookie, estatico, enrutador, csv };
+module.exports = { SIN_RESPUESTA, TIPOS, esLocal, ip, seguridad, enviar, json, error, leerJSON, leerBinario, cookies, ponerCookie, estatico, enrutador, csv };

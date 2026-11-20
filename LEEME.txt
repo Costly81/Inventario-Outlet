@@ -1,15 +1,15 @@
 INVENTARIO OUTLET · Inventario, compras en dólares y ventas desde el celular
-(el número de versión está en el archivo VERSION y en el nombre del .zip)
+Sistema de uso interno del negocio. (El número de versión está en el archivo VERSION.)
 
 No requiere instalar nada más que Node.js. Todos los datos del negocio quedan en la carpeta «datos»
-(se crea sola la primera vez).
+(se crea sola la primera vez) y nunca se tocan al actualizar.
 
 
 ══ 1. INSTALAR (una sola vez) ═════════════════════════════════════════════════
 
  a) Instale Node.js, versión «LTS» (se necesita la 22.13 o más reciente):
         https://nodejs.org
-    Para saber si ya lo tiene, abra la Terminal y escriba:   node --version
+    Para saber si ya lo tiene, abra la Terminal (o el Símbolo del sistema) y escriba:   node --version
 
  b) Descomprima este .zip y deje la carpeta «inventario-outlet» en un lugar fijo,
     por ejemplo en su carpeta personal. No la mueva después de empezar a usarla.
@@ -22,68 +22,80 @@ No requiere instalar nada más que Node.js. Todos los datos del negocio quedan e
 
  d) WINDOWS · Doble clic en «iniciar.bat». Si Windows muestra «Windows protegió su PC», elija
     «Más información» → «Ejecutar de todas formas» (pasa la primera vez porque viene de internet).
-    La primera vez que encienda, si el Firewall de Windows pregunta por «Node.js», marque
-    «Redes privadas» y elija «Permitir acceso»: sin eso los celulares no pueden entrar.
+    Si el Firewall de Windows pregunta por «Node.js», marque «Redes privadas» y elija
+    «Permitir acceso»: sin eso los celulares no pueden entrar.
 
 
-══ 2. ENCENDER, APAGAR Y ABRIR ════════════════════════════════════════════════
+══ 2. LA VENTANA DEL SISTEMA ═══════════════════════════════════════════════════
 
- · Doble clic en iniciar.command (Mac) o iniciar.bat (Windows) abre el mismo MENÚ con números. Escriba el número y presione Enter:
-      1 encender · 2 apagar · 3 reiniciar · 4 abrir en esta Mac · 5 abrir en un celular (código QR)
-      6 ver el registro · 7 respaldo · 8 restablecer el PIN del dueño · 9 versión · 0 salir
-   Apagar, reiniciar y restablecer piden además escribir SI.
-
- · Cerrar la ventana del menú NO apaga el sistema. Se apaga solo con la opción 2.
- · Mientras está encendido, la computadora no se duerme sola (la pantalla sí puede apagarse). (Si la cierra o la apaga, los celulares
-   ya no podrán entrar.)
+ · Doble clic en iniciar.command (Mac) o iniciar.bat (Windows): el sistema ENCIENDE SOLO y la
+   ventana se minimiza (queda en el Dock o en la barra de tareas, trabajando).
+ · ESA VENTANA ES EL SISTEMA. Si la cierra, el sistema se apaga por completo (nada queda corriendo
+   escondido). También se apaga con la opción 0.
+ · Si abre la ventana desde el Dock o la barra de tareas, verá el menú. Escriba el número y Enter:
+      1 abrir en esta computadora · 2 abrir en un celular (código QR) · 3 reiniciar
+      4 ver el registro · 5 respaldo · 6 restablecer el PIN del dueño · 7 versión
+      8 minimizar · 0 apagar y cerrar
+   Reiniciar, restablecer y apagar piden además escribir SI.
+ · Mientras está encendido, la computadora no se duerme sola (la pantalla sí puede apagarse).
 
  · Para que encienda solo al prender la computadora:
-     Mac:     Ajustes del Sistema → General → Ítems de inicio de sesión → «+» → «encender.command»
-              (NO iniciar.command).
+     Mac:     Ajustes del Sistema → General → Ítems de inicio de sesión → «+» → «iniciar.command».
      Windows: Windows + R → escriba  shell:startup  → Enter → en esa carpeta cree un acceso directo
-              a «encender.bat» (NO iniciar.bat).
+              a «iniciar.bat».
+   (Si ya tenía «encender.command» o «encender.bat» ahí, puede dejarlo: hacen lo mismo.)
 
 
 ══ 3. PRIMER USO ═══════════════════════════════════════════════════════════════
 
- 1) Encienda (opción 1) y abra en la Mac (opción 4).
- 2) Escriba su nombre y un PIN de 4 a 6 números: usted es el DUEÑO (ve todo, incluidos costos).
-    (Desde un celular, en lugar de la Mac, se pide el código que muestra el menú.)
+ 1) Abra la ventana del sistema y elija la opción 1 (abrir en esta computadora).
+ 2) Escriba su nombre y un PIN de 4 a 6 números: usted es el DUEÑO (ve y controla todo).
+    Por seguridad, el PIN del dueño SOLO se crea desde la computadora de la tienda.
  3) En Ajustes: nombre de la tienda, cuánto le cobra encima la casa de cambio y a cuánto recibe
     dólares de los clientes. Agregue a quien vende (Personas) con su propio PIN.
+    Quien vende solo puede vender, ver y devolver sus ventas, consultar existencias y ver el dólar.
  4) Registre la mercancía que ya tiene: Compras → Nueva compra, con la FECHA en que se compró,
-    para que el sistema guarde el dólar de ese día. Si no recuerda costos exactos, use
-    «Un total por lote surtido».
- 5) En el celular de quien vende: opción 5 del menú → apunte la cámara al código QR.
-    En el iPhone: Compartir → «Agregar a pantalla de inicio» (se abre como una app).
+    para que el sistema guarde el dólar de ese día.
+ 5) Tómele foto a cada producto con su celular (Inventario → producto → Tomar o elegir foto).
+ 6) En el celular de quien vende: opción 2 de la ventana → apunte la cámara al código QR y entre
+    con su nombre y PIN. En el iPhone: Compartir → «Agregar a pantalla de inicio».
 
  La guía completa está en docs/guia-de-uso.md.
 
 
-══ 4. RESPALDOS ════════════════════════════════════════════════════════════════
+══ 4. ACTUALIZAR A UNA VERSIÓN NUEVA (sin entrar a la computadora) ═════════════
 
- · Cada día se guarda un respaldo automático en datos/respaldos (se conservan 30).
- · Opción 7 del menú o Ajustes → Respaldos para hacer uno al momento y descargarlo.
- · Guarde de vez en cuando una copia FUERA de la Mac (USB o nube).
- · Para restaurar: apague (opción 2), copie el respaldo sobre datos/inventario.sqlite
-   (borre también inventario.sqlite-wal e inventario.sqlite-shm si existen) y encienda.
+ 1) Descargue el archivo inventario-outlet-vX.Y.Z.zip de la Release en GitHub.
+ 2) En el sistema (desde la PC o el celular, como dueño): Ajustes → Actualizar el sistema →
+    arrastre el .zip (o tóquelo para elegirlo). Verá qué trae la versión nueva.
+ 3) Toque «Instalar». Se hace un respaldo, se guarda una copia de la versión actual y el sistema
+    se reinicia solo en unos segundos. Si la versión nueva no arranca, regresa sola a la anterior.
+    También hay un botón «Volver a la versión anterior».
+
+ A mano (si hiciera falta): cierre la ventana del sistema, reemplace todos los archivos EXCEPTO la
+ carpeta «datos» y vuelva a abrir iniciar.command / iniciar.bat.
 
 
-══ 5. ACTUALIZAR A UNA VERSIÓN NUEVA ══════════════════════════════════════════
+══ 5. RESPALDOS ════════════════════════════════════════════════════════════════
 
- 1) Apague (opción 2) y haga un respaldo (opción 7).
- 2) Descargue el ZIP nuevo y reemplace todos los archivos EXCEPTO la carpeta «datos».
- 3) Encienda (opción 1). La base de datos se actualiza sola.
+ · Cada día se guarda un respaldo automático en datos/respaldos (se conservan 30), y otro antes
+   de cada actualización.
+ · Opción 5 de la ventana o Ajustes → Respaldos para hacer uno al momento y descargarlo.
+ · Guarde de vez en cuando una copia FUERA de la computadora (USB o nube), con las fotos
+   (carpeta datos/fotos).
+ · Para restaurar: cierre la ventana del sistema, copie el respaldo sobre datos/inventario.sqlite
+   (borre también inventario.sqlite-wal e inventario.sqlite-shm si existen) y vuelva a abrirla.
 
 
 ══ 6. SI ALGO FALLA ════════════════════════════════════════════════════════════
 
- · El celular no abre la página: debe estar en el MISMO Wi-Fi que la Mac; revise la dirección con
-   la opción 5. Si macOS preguntó si «node» puede aceptar conexiones entrantes, responda Permitir
-   (Mac: Ajustes del Sistema → Red → Firewall → Opciones. Windows: Firewall de Windows Defender →
-   Permitir una aplicación → Node.js en «Privada»).
-   En Windows, la red Wi-Fi debe estar marcada como «Privada» (Configuración → Red e Internet).
- · El dólar no se actualiza: revise el internet de la Mac. Mientras tanto, escriba un dólar manual
-   en Ajustes → Dólar.
- · El dueño olvidó su PIN: opción 8 del menú.
- · Cualquier otra cosa: opción 6 (registro) muestra lo último que pasó.
+ · El celular no abre la página: debe estar en el MISMO Wi-Fi que la computadora; revise la
+   dirección con la opción 2. Si el sistema operativo preguntó si «node» puede aceptar conexiones,
+   responda Permitir (Mac: Ajustes del Sistema → Red → Firewall → Opciones. Windows: Firewall de
+   Windows Defender → Permitir una aplicación → Node.js en «Privada»). En Windows, la red Wi-Fi
+   debe estar marcada como «Privada» (Configuración → Red e Internet).
+ · El dólar no se actualiza: revise el internet de la computadora. Mientras tanto, escriba un
+   dólar manual en Ajustes → Dólar.
+ · El dueño olvidó su PIN: opción 6 de la ventana y luego opción 1 para crear el nuevo.
+ · «El sistema ya está abierto en otra ventana»: búsquela en el Dock o la barra de tareas.
+ · Cualquier otra cosa: opción 4 (registro) muestra lo último que pasó.

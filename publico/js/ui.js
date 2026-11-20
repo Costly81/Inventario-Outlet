@@ -82,6 +82,8 @@ export function hoja({ titulo = '', html = '', pie = '', ancha = false, alCerrar
 /* Escape cierra la hoja de arriba */
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && pilaHojas.length) { e.preventDefault(); pilaHojas[pilaHojas.length - 1].cerrar(); } });
 export const hayHojas = () => pilaHojas.length > 0;
+/** Cierra todas las hojas abiertas (al cambiar de pantalla) */
+export const cerrarHojas = () => { for (const h of [...pilaHojas]) h.cerrar(); };
 
 /** Confirmación: devuelve true/false */
 export function confirmar({ titulo = '¿Seguro?', texto = '', si = 'Sí', no = 'Cancelar', peligro = false } = {}) {

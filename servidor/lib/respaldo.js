@@ -18,7 +18,7 @@ function crear({ B, datos, conservar = 30, registro = console }) {
     try {
       return fs.readdirSync(carpeta).filter(n => /^inventario-.*\.sqlite$/.test(n)).map(n => {
         const st = fs.statSync(path.join(carpeta, n));
-        return { nombre: n, bytes: st.size, fecha: st.mtime.toISOString(), manual: n.includes('-manual') };
+        return { nombre: n, bytes: st.size, fecha: st.mtime.toISOString(), manual: !/^inventario-\d{4}-\d{2}-\d{2}\.sqlite$/.test(n) };
       }).sort((a, b) => b.fecha.localeCompare(a.fecha));
     } catch (_) { return []; }
   }

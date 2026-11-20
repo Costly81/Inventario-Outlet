@@ -7,7 +7,7 @@
    · Alta/edición de productos (con tallas), merma y CONTEO FÍSICO (comparar estante vs sistema).
    Un vendedor ve solo existencias y precios (sin costos).
    ───────────────────────────────────────────────────────────────────────────── */
-import { estado, api, escuchar, cargarCatalogo, esc, mxn, usd, tcFmt, pct, num, fechaCorta, esDueno, NOMBRES, hora24a12, vibrar } from '../nucleo.js';
+import { estado, api, escuchar, cargarCatalogo, esc, mxn, usd, tcFmt, pct, num, fechaCorta, esDueno, NOMBRES, hora24a12, vibrar, fotoDe, achicarFoto, subirArchivo } from '../nucleo.js';
 import { ico } from '../iconos.js';
 import { aviso, avisoError, hoja, al, confirmar, esqueletos, vacio, $ } from '../ui.js';
 import { ir } from '../app.js';
@@ -58,13 +58,14 @@ function pintar() {
       <div class="tarjeta kpi"><span class="kpi-etiqueta">Margen promedio</span><span class="kpi-valor">${venta ? pct((venta - costo) / venta * 100) : '—'}</span><span class="kpi-sub">objetivo ${estado.sesion.ajustes.margenObjetivo} %</span></div>`;
   }
   const bajos = todos.filter(p => p.existencia > 0 && p.existencia <= (p.minimo ?? minimo)).length, agot = todos.filter(p => p.existencia <= 0).length;
-  const quietos = todos.filter(p => p.existencia > 0 && p.vendidas30 === 0).length;
+  const quietos = todos.filter(p => p.existencia > 0 && p.vendidas30 === 0).length, sinFoto = todos.filter(p => !p.foto).length;
   const catsCon = c.categorias.filter(k => todos.some(p => p.categoriaId === k.id));
   raiz.querySelector('[data-chips]').innerHTML = [
     `<button class="chip ${filtro.vista === 'todo' && filtro.cat === 'todo' ? 'activo' : ''}" data-f="vista:todo">Todo <span class="cuenta">${todos.length}</span></button>`,
     bajos ? `<button class="chip ${filtro.vista === 'bajo' ? 'activo' : ''}" data-f="vista:bajo">⚠️ Por agotarse <span class="cuenta">${bajos}</span></button>` : '',
     agot ? `<button class="chip ${filtro.vista === 'agotado' ? 'activo' : ''}" data-f="vista:agotado">Agotados <span class="cuenta">${agot}</span></button>` : '',
     quietos && dueno ? `<button class="chip ${filtro.vista === 'quieto' ? 'activo' : ''}" data-f="vista:quieto">😴 Sin vender 30 días <span class="cuenta">${quietos}</span></button>` : '',
+    sinFoto && dueno ? `<button class="chip ${filtro.vista === 'sinfoto' ? 'activo' : ''}" data-f="vista:sinfoto">📷 Sin foto <span class="cuenta">${sinFoto}</span></button>` : '',
     ...catsCon.map(k => `<button class="chip ${filtro.cat == k.id ? 'activo' : ''}" data-f="cat:${k.id}">${esc(k.emoji)} ${esc(k.nombre)}</button>`)
   ].join('');
 
@@ -73,6 +74,7 @@ function pintar() {
   if (filtro.vista === 'bajo') lista = lista.filter(p => p.existencia > 0 && p.existencia <= (p.minimo ?? minimo));
   if (filtro.vista === 'agotado') lista = lista.filter(p => p.existencia <= 0);
   if (filtro.vista === 'quieto') lista = lista.filter(p => p.existencia > 0 && p.vendidas30 === 0);
+  if (filtro.vista === 'sinfoto') lista = lista.filter(p => !p.foto);
   if (filtro.q) lista = lista.filter(p => (p.nombre + ' ' + (p.categoria || '') + ' ' + p.variantes.map(v => v.nombre).join(' ')).toLowerCase().includes(filtro.q));
   const caja = raiz.querySelector('[data-lista]');
   if (!todos.length) { caja.innerHTML = vacio({ emoji: '📦', titulo: 'El inventario está vacío', texto: dueno ? 'Lo más rápido: registre una compra (con la fecha en que se compró, para guardar el dólar de ese día). También puede crear productos y luego contarlos.' : 'Todavía no hay productos.',
@@ -82,7 +84,7 @@ function pintar() {
     const margen = p.margen == null ? '' : `<span class="insignia ${p.margen >= estado.sesion.ajustes.margenObjetivo ? 'i-bien' : p.margen >= estado.sesion.ajustes.margenObjetivo * 0.6 ? 'i-aviso' : 'i-mal'}">${pct(p.margen)}</span>`;
     const dias = p.existencia <= 0 ? 'agotado' : p.diasInventario != null ? `alcanza ~${p.diasInventario} día${p.diasInventario === 1 ? '' : 's'}` : 'sin ventas recientes';
     return `<button class="fila-lista" data-p="${p.id}" style="--c:${esc(p.color)}">
-      <span class="ico">${esc(p.emoji)}</span>
+      <span class="ico">${fotoDe(p) ? `<img class="foto" src="${fotoDe(p)}" alt="" loading="lazy">` : esc(p.emoji)}</span>
       <span style="min-width:0"><div class="titulo">${esc(p.nombre)}</div>
         <div class="detalle">${esc(p.categoria || 'Sin categoría')} · ${mxn(p.precio)}${dueno && p.costoUsd ? ` · costo ${usd(p.costoUsd)}` : ''}${dias ? ' · ' + dias : ''}</div>
         <div class="tallitas">${p.variantes.map(v => `<span class="tallita ${v.existencia <= 0 ? 'cero' : v.existencia <= 2 ? 'poco' : ''}">${v.nombre === 'Única' ? '' : esc(v.nombre) + ' · '}${v.existencia}</span>`).join('')}</div></span>
@@ -99,6 +101,8 @@ async function detalle(id) {
   h.titulo(`${p.emoji} ${p.nombre}`);
   const sugerido = p.costoReposicion ? Math.ceil(p.costoReposicion / (1 - aj.margenObjetivo / 100) / aj.redondeo) * aj.redondeo : null;
   h.cuerpo.innerHTML = `
+    <div class="foto-caja foto-ficha" style="--c:${esc(p.color)}" data-foto-ficha>${fotoDe(p) ? `<img src="${fotoDe(p)}" alt="${esc(p.nombre)}">` : esc(p.emoji)}
+      ${dueno ? `<div class="acciones-foto"><label class="btn btn-chico">${ico('celular')} ${p.foto ? 'Cambiar foto' : 'Tomar o elegir foto'}<input type="file" accept="image/*" data-archivo-foto hidden></label>${p.foto ? `<button class="btn btn-chico" data-quitar-foto>${ico('basura')}</button>` : ''}</div>` : ''}</div>
     <div class="rejilla r-4">
       <div class="tarjeta plana kpi"><span class="kpi-etiqueta">Piezas</span><span class="kpi-valor">${num(p.existencia)}</span><span class="kpi-sub">${p.vendidas30} vendidas en 30 días</span></div>
       <div class="tarjeta plana kpi"><span class="kpi-etiqueta">Precio</span><span class="kpi-valor">${mxn(p.precio)}</span><span class="kpi-sub">${tc.recibir ? '≈ ' + usd(p.precio / tc.recibir) : ''}</span></div>
@@ -121,6 +125,11 @@ async function detalle(id) {
     }).join('')}</div>` : '<p class="tenue">Sin movimientos todavía.</p>'}
     ${p.notas ? `<div class="nota" style="margin-top:16px">${ico('info')}<span>${esc(p.notas)}</span></div>` : ''}`;
   if (dueno) {
+    /* Foto desde la ficha: cámara o galería del celular */
+    const inp = h.el.querySelector('[data-archivo-foto]');
+    if (inp) inp.onchange = async () => { const f = inp.files[0]; if (!f) return; if (await subirFoto(p.id, f, h.el.querySelector('[data-foto-ficha]'))) { h.cerrar(); setTimeout(() => detalle(p.id), 250); } };
+    const q = h.el.querySelector('[data-quitar-foto]');
+    if (q) q.onclick = async () => { if (!await confirmar({ titulo: '¿Quitar la foto?', si: 'Quitar', peligro: true })) return; try { await api(`/api/productos/${p.id}/foto`, { metodo: 'DELETE' }); await cargarCatalogo(true); h.cerrar(); setTimeout(() => detalle(p.id), 250); } catch (e) { avisoError(e); } };
     const pie = document.createElement('footer'); pie.className = 'hoja-pie';
     pie.innerHTML = `<button class="btn btn-borde" data-archivar>${ico(p.activo ? 'basura' : 'recargar')} ${p.activo ? 'Archivar' : 'Reactivar'}</button><button class="btn btn-borde" data-mermar>${ico('roto')} Merma</button><button class="btn btn-primario" data-editar>${ico('lapiz')} Editar</button>`;
     h.el.appendChild(pie);
@@ -142,8 +151,12 @@ export function formularioProducto(p = null, alGuardar) {
   const c = estado.catalogo || { categorias: [] };
   let emoji = p ? p.emoji : '👕', categoriaId = p ? p.categoriaId : (c.categorias[0] || {}).id;
   let tallas = p ? p.variantes.filter(v => v.activo !== false).map(v => ({ id: v.id, nombre: v.nombre, precio: v.precioPropio ?? '' })) : TALLAS['Ropa'].map(n => ({ nombre: n, precio: '' }));
+  let fotoNueva = null;      // foto elegida para un producto nuevo (se sube al guardarlo)
   const h = hoja({ titulo: p ? 'Editar producto' : 'Nuevo producto', html: `
     <form class="formulario" data-f>
+      <div class="foto-caja" data-foto-form style="height:190px;aspect-ratio:auto">${p && p.foto ? `<img src="${fotoDe(p)}" alt="">` : `<span data-emoji-grande>${esc(emoji)}</span>`}
+        <div class="acciones-foto"><label class="btn btn-chico">${ico('celular')} ${p && p.foto ? 'Cambiar foto' : 'Tomar o elegir foto'}<input type="file" accept="image/*" data-archivo hidden></label></div></div>
+      <small class="sec" style="margin-top:-6px">La foto ayuda a quien vende a reconocer la prenda. Con el celular puede tomarla con la cámara o elegirla de la galería.</small>
       <label class="campo"><span>Nombre</span><input name="nombre" required maxlength="60" value="${esc(p ? p.nombre : '')}" placeholder="Por ejemplo: Playera estampada" autofocus></label>
       <div class="campo"><span>Categoría</span><div class="chips" data-cats style="flex-wrap:wrap"></div></div>
       <div class="doble"><label class="campo"><span>Precio de venta</span><div class="con-prefijo"><i>$</i><input name="precio" inputmode="decimal" required value="${p ? p.precio : ''}" placeholder="199"></div></label>
@@ -167,8 +180,16 @@ export function formularioProducto(p = null, alGuardar) {
     h.el.querySelector('[data-precios-talla]').innerHTML = tallas.map((t, i) => `<label>${esc(t.nombre)}<input inputmode="decimal" data-precio-talla="${i}" value="${t.precio}" placeholder="$"></label>`).join('');
   };
   pintaCats(); pintaEmojis(); pintaTallas();
+  /* Elegir foto: en un producto existente se sube al momento; en uno nuevo, al guardar */
+  h.el.querySelector('[data-archivo]').onchange = async ev => {
+    const f = ev.target.files[0]; if (!f) return;
+    const caja = h.el.querySelector('[data-foto-form]');
+    if (p) { if (await subirFoto(p.id, f, caja)) { p.foto = (estado.catalogo.productos.find(x => x.id === p.id) || {}).foto; caja.querySelector('img, [data-emoji-grande]').outerHTML = `<img src="${fotoDe(p)}" alt="">`; } return; }
+    try { fotoNueva = await achicarFoto(f); const url = URL.createObjectURL(fotoNueva); const actual = caja.querySelector('img, [data-emoji-grande]'); actual.outerHTML = `<img src="${url}" alt="">`; }
+    catch (e) { avisoError(e); }
+  };
   al(h.el, 'click', '[data-cat]', b => { categoriaId = +b.dataset.cat; const k = c.categorias.find(x => x.id === categoriaId); if (k && !p) { emoji = k.emoji; pintaEmojis(); } pintaCats(); });
-  al(h.el, 'click', '[data-e]', b => { emoji = b.dataset.e; pintaEmojis(); vibrar(6); });
+  al(h.el, 'click', '[data-e]', b => { emoji = b.dataset.e; pintaEmojis(); vibrar(6); const g = h.el.querySelector('[data-emoji-grande]'); if (g) g.textContent = emoji; });
   al(h.el, 'click', '[data-preset]', b => { tallas = TALLAS[b.dataset.preset].map(n => ({ ...(tallas.find(t => t.nombre === n) || {}), nombre: n, precio: (tallas.find(t => t.nombre === n) || {}).precio || '' })); pintaTallas(); });
   al(h.el, 'click', '[data-quitar-talla]', b => { tallas.splice(+b.dataset.quitarTalla, 1); pintaTallas(); });
   const agregarTalla = () => { const i = h.el.querySelector('[data-nueva-talla]'); const n = i.value.trim(); if (!n) return; if (!tallas.some(t => t.nombre.toLowerCase() === n.toLowerCase())) tallas.push({ nombre: n, precio: '' }); i.value = ''; pintaTallas(); };
@@ -181,6 +202,7 @@ export function formularioProducto(p = null, alGuardar) {
     const datos = { nombre: d.get('nombre'), precio: d.get('precio'), minimo: d.get('minimo'), notas: d.get('notas'), categoriaId, emoji, variantes: tallas.map(t => ({ id: t.id, nombre: t.nombre, precio: t.precio })) };
     try {
       const r = p ? await api('/api/productos/' + p.id, { metodo: 'PUT', datos }) : await api('/api/productos', { metodo: 'POST', datos });
+      if (!p && fotoNueva) { try { await subirArchivo(`/api/productos/${r.id}/foto`, fotoNueva, 'image/jpeg'); } catch (e) { aviso('El producto se creó, pero la foto no se pudo subir: ' + e.message, { tipo: 'mal' }); } }
       aviso(p ? 'Producto guardado' : `«${datos.nombre}» creado`); h.cerrar(); await cargarCatalogo(true);
       alGuardar && alGuardar(r.id);
       if (!p && !alGuardar && location.hash.includes('/nuevo')) history.replaceState(null, '', '#/inventario');
@@ -257,4 +279,18 @@ function conteo() {
       if (location.hash.includes('/contar')) history.replaceState(null, '', '#/inventario');
     } catch (e) { avisoError(e); }
   };
+}
+
+/* ═════════ Subir la foto de un producto (achicada en el celular) ═════════ */
+async function subirFoto(productoId, archivo, caja) {
+  const capa = document.createElement('div'); capa.className = 'subiendo'; capa.textContent = 'Preparando foto…';
+  if (caja) caja.appendChild(capa);
+  try {
+    const blob = await achicarFoto(archivo);
+    await subirArchivo(`/api/productos/${productoId}/foto`, blob, 'image/jpeg', f => { capa.textContent = `Subiendo ${Math.round(f * 100)} %`; });
+    await cargarCatalogo(true);
+    aviso('Foto guardada');
+    return true;
+  } catch (e) { avisoError(e); return false; }
+  finally { capa.remove(); }
 }

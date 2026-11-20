@@ -14,9 +14,22 @@ En la frontera no hay un solo dólar. El sistema maneja tres, y los muestra junt
 
 La píldora dorada de arriba muestra el **mercado** y cuánto cambió contra el cierre de ayer (verde si subió, rojo si bajó). Late cuando cambia.
 
+## La ventana del sistema
+
+Al abrir `iniciar.command` (Mac) o `iniciar.bat` (Windows) el sistema **enciende solo** y la ventana se **minimiza**. Esa ventana **es** el sistema: si la cierra, se apaga por completo. Ábrala desde el Dock o la barra de tareas para usar el menú (1 abrir, 2 celular con código QR, 3 reiniciar, 4 registro, 5 respaldo, 6 restablecer PIN, 7 versión, 8 minimizar, 0 apagar y cerrar).
+
 ## Entrar
 
-Toque su nombre y escriba su PIN. Cada persona tiene el suyo. El **dueño** ve todo; quien está en **ventas** puede vender, devolver y consultar existencias y el dólar, pero no ve costos ni ganancias.
+En el celular, escanee el **código QR** (opción 2 de la ventana del sistema). Toque su nombre y escriba su PIN; cada persona tiene el suyo. El PIN del **dueño** se crea (y se restablece) solo desde la computadora de la tienda.
+
+| Puede… | Dueño | Ventas |
+| --- | :---: | :---: |
+| Vender, cobrar en pesos o dólares | ✓ | ✓ |
+| Ver, devolver y cancelar **sus** ventas (cancelar: hasta 15 min) | ✓ | ✓ |
+| Ver existencias, precios, fotos y el dólar | ✓ | ✓ |
+| Ver ventas de todos, costos, ganancias y márgenes | ✓ | — |
+| Compras, merma, conteo, gastos, reportes, proyección | ✓ | — |
+| Productos, fotos, personas, ajustes, respaldos, Excel, actualizar | ✓ | — |
 
 La sesión dura 30 días en cada celular. Para salir: *Más → su nombre → Salir* (celular) o el círculo con su inicial (PC).
 
@@ -68,7 +81,9 @@ La sesión dura 30 días en cada celular. Para salir: *Más → su nombre → Sa
   - movimientos (ventas, merma, devoluciones, entradas);
   - *Editar*, *Merma* y *Archivar* (deja de aparecer para vender; su historia se conserva).
 
-**Producto nuevo:** nombre, categoría, precio, dibujo y tallas (botones rápidos: *Ropa* CH–XG, *Pantalón* 28–38, *Calzado*, *Niños*, *Única*, o escriba las suyas). Si una talla cuesta distinto, ábralo en *Precio distinto por talla*.
+**Fotos:** en la ficha del producto (o al crearlo) toque **Tomar o elegir foto**. En el celular puede usar la **cámara** o la **galería**; en la PC, un archivo. La foto se achica sola antes de subirse y aparece en Vender, al elegir talla, en el carrito y en el inventario. El filtro **📷 Sin foto** muestra lo que falta.
+
+**Producto nuevo:** foto, nombre, categoría, precio, dibujo y tallas (botones rápidos: *Ropa* CH–XG, *Pantalón* 28–38, *Calzado*, *Niños*, *Única*, o escriba las suyas). Si una talla cuesta distinto, ábralo en *Precio distinto por talla*.
 
 > Para mucha mercancía surtida y poco catálogo, puede crear productos como «Surtido $100» con talla *Única*.
 
@@ -125,6 +140,7 @@ Los botones **Excel** descargan archivos `.csv` que abren en Excel o Numbers.
 - **Precios y avisos:** margen objetivo, redondeo de precios sugeridos y desde cuántas piezas avisar.
 - **Personas:** agregar vendedores con su PIN, cambiar papel, color o PIN, desactivar.
 - **Categorías**, **Respaldos** (descargar) y **Exportar a Excel**.
+- **Actualizar el sistema:** descargue el `inventario-outlet-vX.Y.Z.zip` de la Release en GitHub, arrástrelo a la zona punteada (o tóquela para elegirlo, también desde el celular), revise qué trae y toque **Instalar**. Se hace un respaldo, el sistema se reinicia en unos segundos y las pantallas abiertas se recargan solas. Si la versión nueva no arranca, regresa sola a la anterior; también puede usar **Volver a la versión anterior**.
 
 ## Atajos en la PC
 
